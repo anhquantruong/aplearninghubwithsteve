@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AP Macroeconomics Practice Exam</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif:wght@400;700&family=Roboto:wght@400;500;700&display=swap">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<!-- Watermark tên + email học sinh, phủ mờ toàn trang, không chặn thao tác click -->
+<div id="watermark" class="watermark" aria-hidden="true"></div>
+
+<!-- CỔNG VÀO: hiện trước tiên, ẩn hết phần thi cho tới khi qua được bước này -->
+<div id="gate-screen" class="gate-screen">
+<form id="gate-form" class="gate-box">
+<div class="rainbow"></div>
+<h1 id="gate-exam-title">Đang tải đề thi...</h1>
+<p class="gate-hint">Nhập thông tin để bắt đầu làm bài.</p>
+
+<label>Email</label>
+<input id="gate-email" type="email" required placeholder="ban@email.com">
+
+<label>Mật khẩu đề thi</label>
+<input id="gate-password" type="password" required placeholder="Do giáo viên cung cấp">
+
+<button type="submit" id="gate-submit" class="btn wide">Bắt đầu làm bài</button>
+<div id="gate-error" class="status err"></div>
+</form>
+</div>
+
+<!-- TOÀN BỘ PHẦN THI: ẩn cho tới khi qua cổng vào -->
+<div id="app-root" class="app" hidden>
+<header class="topbar">
+<div class="title">
+<h1>Section I: Multiple Choice</h1>
+<span class="subtitle" id="exam-subtitle">AP Macroeconomics</span>
+</div>
+<div class="timer-box">
+<div id="timer" class="timer">70:00</div>
+<button id="timer-toggle" class="pill">Hide</button>
+</div>
+<div class="tools">
+<button id="calc-btn" class="tool" title="Desmos four-function calculator">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="2" width="16" height="20" rx="2"/><rect x="7" y="5" width="10" height="4"/><path d="M8 13h.01M12 13h.01M16 13h.01M8 17h.01M12 17h.01M16 17h.01"/></svg>
+<span>Calculator</span>
+</button>
+</div>
+<div class="rainbow"></div>
+</header>
+
+<main id="stage" class="stage"><div class="loading">Đang tải câu hỏi...</div></main>
+
+<footer class="footbar">
+<div class="rainbow top"></div>
+<div class="brand">AP Practice</div>
+<button id="nav-btn" class="nav-btn"></button>
+<div class="actions">
+<button id="back-btn" class="btn">Back</button>
+<button id="next-btn" class="btn">Next</button>
+</div>
+</footer>
+</div>
+
+<div id="nav-popup" class="popup" hidden>
+<div class="popup-head"><strong>Questions</strong><button id="nav-close" class="x">×</button></div>
+<div id="nav-grid" class="nav-grid"></div>
+<p id="nav-status" class="nav-status"></p>
+<button id="review-btn" class="btn wide">Review overall</button>
+</div>
+
+<!-- Calculator: Desmos Four-Function Calculator -->
+<div id="calc" class="calc" hidden>
+<div class="calc-head" id="calc-head">
+<span>Calculator</span>
+<button id="calc-close" class="x">×</button>
+</div>
+<div id="calc-desmos" class="calc-desmos"></div>
+<div id="calc-resize-handle" class="calc-resize-handle" title="Kéo để đổi kích thước"></div>
+</div>
+
+<!-- Cảnh báo khi thoát toàn màn hình trong lúc thi (dưới ngưỡng bị huỷ bài) -->
+<div id="fs-warning" class="fs-overlay" hidden>
+<div class="fs-overlay-box">
+<h3>⚠️ Cảnh báo thoát toàn màn hình</h3>
+<p id="fs-warning-text"></p>
+<button id="fs-resume-btn" class="btn wide">Quay lại làm bài (toàn màn hình)</button>
+</div>
+</div>
+
+<!-- Khoá bài khi thoát toàn màn hình quá số lần cho phép -->
+<div id="fs-lockout" class="fs-overlay" hidden>
+<div class="fs-overlay-box">
+<h3>❌ Bài làm đã bị huỷ</h3>
+<p>Bạn đã thoát toàn màn hình quá số lần cho phép. Vui lòng làm lại bài từ đầu.</p>
+<button id="fs-restart-btn" class="btn wide">Làm lại từ đầu</button>
+</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://www.desmos.com/api/v1.12/calculator.js?apiKey=b309a22c7a96470da8216ea5cdb49fb8"></script>
+<script src="script.js"></script>
+</body>
+</html>

@@ -1,0 +1,263 @@
+:root {
+  --blue: #324dc7;
+  --ink: #1a1a1a;
+  --line: #d1d5db;
+  --soft: #f1f2f3;
+  --red: #b91c1c;
+  --rainbow: linear-gradient(90deg,#FF3B30,#FF6D00,#FFB800,#FFE600,#A8E10C,#39D353,#00C896,#00D9FF,#0099FF,#2455FF,#7B2CFF,#D629FF,#FF2DA6,#FF7043,#F4D35E,#06D6A0,#EF476F);
+}
+* { box-sizing: border-box; margin: 0; }
+html, body { height: 100%; }
+/* Sửa lỗi chồng màn hình: .gate-screen và .app tự set display:flex nên thuộc tính
+   hidden của HTML không tự ẩn được (rule display:none mặc định của trình duyệt bị
+   author CSS đè lên). Ép !important để hidden luôn thắng, đảm bảo màn hình test
+   thay thế hẳn form nhập thông tin thay vì xếp chồng bên dưới nó. */
+[hidden] { display: none !important; }
+body { font-family: Roboto, sans-serif; color: var(--ink); background: #fff; -webkit-user-select: none; user-select: none; }
+button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+input { font: inherit; }
+.app { display: flex; flex-direction: column; height: 100dvh; }
+
+.gate-screen {
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--soft);
+  padding: 20px;
+}
+.gate-box {
+  position: relative;
+  width: 100%;
+  max-width: 380px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 36px 32px 28px;
+  box-shadow: 0 8px 30px rgba(0,0,0,.08);
+  overflow: hidden;
+}
+.gate-box .rainbow { position: absolute; top: 0; left: 0; right: 0; height: 4px; }
+.gate-box h1 { font-size: 19px; font-weight: 700; margin-bottom: 4px; text-align: center; }
+.gate-hint { font-size: 13px; color: #666; text-align: center; margin-bottom: 20px; }
+.gate-box label { display: block; font-size: 12px; font-weight: 600; color: #555; margin: 12px 0 4px; }
+.gate-box input {
+  width: 100%; padding: 9px 11px; border: 1px solid var(--line); border-radius: 7px;
+}
+.gate-box input:focus { outline: 2px solid var(--blue); outline-offset: 1px; }
+.gate-box .btn.wide { margin-top: 20px; width: 100%; border-radius: 8px; padding: 10px; }
+.gate-box .status { margin-top: 12px; text-align: center; min-height: 16px; font-size: 13px; }
+
+.loading { margin: 20vh auto 0; text-align: center; color: #888; font-size: 15px; }
+
+/* Header */
+.topbar { position: relative; height: 80px; padding: 0 32px; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
+.title h1 { font-size: 20px; font-weight: 700; letter-spacing: -.02em; }
+.subtitle { font-size: 14px; color: #555; }
+.timer-box { position: absolute; left: 50%; top: 14px; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.timer { font-size: 21px; font-weight: 500; font-variant-numeric: tabular-nums; line-height: 28px; }
+.timer.low { color: #dc2626; }
+.pill { min-width: 45px; padding: 1px 8px; border: 1px solid #000; border-radius: 999px; font-size: 11px; font-weight: 600; }
+.pill:hover, .tool:hover { background: #f3f4f6; }
+.tool { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 6px 10px; font-size: 12px; font-weight: 500; }
+.rainbow { position: absolute; left: 0; right: 0; bottom: 0; height: 2px; background: var(--rainbow); }
+.rainbow.top { top: 0; bottom: auto; }
+
+/* Stage: single vs split */
+.stage { flex: 1; min-height: 0; display: flex; }
+.pane { overflow-y: auto; padding: 56px 40px 100px; }
+.pane-inner { max-width: 48rem; margin: 0 auto; }
+.stage.single .pane { flex: 1; }
+.stage.single .pane-inner { max-width: 44rem; }
+.stage.split .pane { width: 50%; }
+.stage.split .pane.left { border-right: 4px solid #888; }
+.stimulus { font-family: "Noto Serif", serif; font-size: 17px; line-height: 1.6; }
+.stimulus img { width: 100%; height: auto; border: 1px solid var(--line); margin-bottom: 12px; }
+.stimulus figcaption { font-size: 14px; color: #444; }
+
+/* Question header */
+.qhead { display: flex; height: 30px; margin-bottom: 14px; border-bottom: 2px solid transparent; border-image: var(--rainbow) 1; padding-bottom: 1px; }
+.qnum { width: 26px; display: grid; place-items: center; background: var(--ink); color: #fff; font-weight: 700; font-size: 19px; }
+.qbar { flex: 1; display: flex; align-items: center; justify-content: space-between; background: var(--soft); padding: 0 6px 0 10px; }
+.mark { display: flex; align-items: center; gap: 6px; padding: 4px 8px; font-size: 14px; }
+.mark svg { fill: none; stroke: currentColor; stroke-width: 2; }
+.mark.on { font-weight: 700; color: #b91c1c; }
+.mark.on svg { fill: #b91c1c; }
+.elim { font-size: 13px; font-weight: 500; text-decoration: line-through; padding: 3px 8px; border: 1px solid #888; border-radius: 4px; }
+.elim.on { background: var(--ink); color: #fff; text-decoration: none; }
+
+.qtext { font-family: "Noto Serif", serif; font-size: 17px; line-height: 1.6; margin: 18px 0 20px; }
+.choice { display: flex; align-items: flex-start; gap: 12px; width: 100%; text-align: left; padding: 10px 12px; margin-bottom: 14px; min-height: 44px; border-radius: 8px; box-shadow: inset 0 0 0 1px rgba(0,0,0,.8); background: #fff; }
+.choice:hover { background: #f0f0f0; }
+.choice.picked { box-shadow: inset 0 0 0 2px var(--blue); background: #eef1fc; }
+.choice.gone .ctext { text-decoration: line-through; opacity: .45; }
+.letter { flex-shrink: 0; width: 24px; height: 24px; display: grid; place-items: center; border: 2px solid #525252; border-radius: 50%; font-weight: 700; font-size: 14px; color: #525252; }
+.choice.picked .letter { background: var(--blue); border-color: var(--blue); color: #fff; }
+.ctext { font-family: "Noto Serif", serif; font-size: 16.5px; line-height: 1.6; flex: 1; }
+
+/* Footer */
+.footbar { position: relative; height: 72px; flex-shrink: 0; padding: 0 32px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 -2px 10px rgba(0,0,0,.05); background: #fff; }
+.brand { flex: 1; font-size: 22px; font-weight: 500; }
+.nav-btn { background: #000; color: #fff; font-weight: 700; padding: 8px 8px 8px 16px; border-radius: 8px; box-shadow: 0 1px 8px rgba(0,0,0,.2); }
+.nav-btn::after { content: "▴"; margin-left: 6px; }
+.actions { flex: 1; display: flex; justify-content: flex-end; gap: 8px; }
+.btn { background: var(--blue); color: #fff; font-weight: 700; font-size: 14px; padding: 8px 24px; border-radius: 999px; }
+.btn:hover { background: #263999; }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+.btn.wide { width: 100%; margin-top: 14px; border-radius: 8px; }
+
+/* Question navigator */
+.popup { position: fixed; left: 50%; bottom: 86px; transform: translateX(-50%); width: min(450px, 94vw); background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 16px; box-shadow: 0 4px 24px rgba(0,0,0,.2); z-index: 60; }
+.popup[hidden], .calc[hidden] { display: none; }
+.popup-head { display: flex; justify-content: space-between; margin-bottom: 12px; }
+.x { font-size: 22px; line-height: 1; padding: 0 6px; }
+.nav-grid { display: grid; grid-template-columns: repeat(10, 1fr); gap: 6px; }
+.nav-grid button { aspect-ratio: 1; border: 1.5px dashed #888; border-radius: 4px; font-size: 13px; font-weight: 500; position: relative; }
+.nav-grid button.done { border-style: solid; background: var(--blue); border-color: var(--blue); color: #fff; }
+.nav-grid button.current { outline: 2px solid #000; outline-offset: 1px; }
+.navflag { position: absolute; top: -7px; right: -5px; fill: #b91c1c; pointer-events: none; }
+.nav-status { font-size: 13px; color: #16a34a; text-align: center; margin-bottom: 12px; }
+.nav-status.warn { color: #b91c1c; font-weight: 600; }
+
+/* Trang review lớn (full-page), cùng logic với popup overview nhỏ nhưng phóng to */
+.bigreview-title { font-size: 26px; font-weight: 700; text-align: center; margin: 40px 0 6px; }
+.nav-grid.big { grid-template-columns: repeat(8, 1fr); gap: 12px; margin: 24px 0 30px; }
+.nav-grid.big button { font-size: 17px; min-height: 56px; }
+.bigreview-actions { display: flex; gap: 12px; }
+.bigreview-actions .btn { flex: 1; margin-top: 0; }
+.btn.secondary { background: #fff; color: var(--blue); box-shadow: inset 0 0 0 1.5px var(--blue); }
+.btn.secondary:hover { background: #eef1fc; }
+
+/* Overlay cảnh báo / khoá bài khi thoát toàn màn hình */
+.fs-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.55); display: flex; align-items: center; justify-content: center; z-index: 100; padding: 20px; }
+.fs-overlay[hidden] { display: none; }
+.fs-overlay-box { background: #fff; border-radius: 12px; padding: 28px 26px; max-width: 420px; width: 100%; text-align: center; box-shadow: 0 12px 40px rgba(0,0,0,.3); }
+.fs-overlay-box h3 { font-size: 18px; margin-bottom: 10px; }
+.fs-overlay-box p { font-size: 14px; color: #444; line-height: 1.5; margin-bottom: 18px; }
+
+/* Watermark tên + email, phủ mờ khắp trang, nằm trên cùng nhưng gần như trong suốt
+   nên không cản việc đọc/làm bài — pointer-events:none để không chặn click */
+.watermark {
+  position: fixed;
+  top: -20%; left: -20%;
+  width: 140%; height: 140%;
+  z-index: 9999;
+  pointer-events: none;
+  overflow: hidden;
+  display: flex;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  transform: rotate(-28deg);
+  opacity: .07;
+  user-select: none;
+}
+.watermark span {
+  display: inline-block;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 600;
+  color: #000;
+  margin: 26px 34px;
+}
+
+/* Calculator (Desmos four-function) — kéo tay cầm ở góc dưới-phải để phóng to/thu nhỏ tự do */
+.calc {
+  position: fixed; top: 100px; right: 40px;
+  width: 340px; height: 420px;
+  min-width: 260px; min-height: 320px;
+  max-width: 92vw; max-height: 85vh;
+  background: #fff; border: 1px solid #888; border-radius: 10px;
+  box-shadow: 0 8px 30px rgba(0,0,0,.25); z-index: 70;
+  display: flex; flex-direction: column;
+  overflow: hidden;
+}
+.calc-head { flex-shrink: 0; display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: var(--soft); font-size: 13px; font-weight: 500; cursor: grab; }
+.calc-head .x { padding: 0 4px; font-size: 18px; }
+.calc-head .x:hover { background: rgba(0,0,0,.08); border-radius: 4px; }
+.calc-desmos { flex: 1; min-height: 0; width: 100%; position: relative; }
+
+/* Tay cầm resize tự vẽ bằng JS — không dùng CSS "resize" mặc định của trình duyệt vì
+   widget Desmos bên trong chiếm trọn vùng góc dưới-phải, khiến trình duyệt không
+   bắt được thao tác kéo ở đúng góc đó. Tay cầm này nổi lên trên (z-index cao hơn)
+   nên luôn nhận được thao tác chuột trước khi Desmos kịp xử lý. */
+.calc-resize-handle {
+  position: absolute; right: 0; bottom: 0;
+  width: 20px; height: 20px;
+  cursor: nwse-resize;
+  z-index: 20;
+}
+.calc-resize-handle::after {
+  content: "";
+  position: absolute; right: 4px; bottom: 4px;
+  width: 0; height: 0;
+  border-style: solid;
+  border-width: 0 0 11px 11px;
+  border-color: transparent transparent #6b7280 transparent;
+}
+.calc-resize-handle:hover::after { border-color: transparent transparent #324dc7 transparent; }
+
+/* Results */
+.result { max-width: 34rem; margin: 15vh auto 0; text-align: center; padding: 0 20px; }
+.result h2 { font-size: 26px; margin-bottom: 8px; }
+.result .score { font-size: 56px; font-weight: 700; color: var(--blue); margin: 12px 0; }
+
+/* Chúc mừng hoàn thành bài thi */
+.congrats { max-width: 30rem; margin: 16vh auto 0; text-align: center; padding: 0 20px; }
+.congrats-icon { font-size: 52px; margin-bottom: 10px; }
+.congrats h2 { font-size: 24px; margin-bottom: 8px; }
+.congrats p { color: #555; margin-bottom: 18px; }
+.congrats .btn.wide { max-width: 260px; margin: 18px auto 0; }
+
+/* Trang thống kê sau khi xem kết quả */
+.stats-page { max-width: 52rem; margin: 0 auto; padding: 40px 24px 100px; }
+.stats-card { border: 1px solid var(--line); border-radius: 12px; padding: 24px 28px; margin-bottom: 24px; box-shadow: 0 4px 18px rgba(0,0,0,.06); }
+.stats-score { font-size: 44px; font-weight: 700; color: var(--blue); }
+.stats-percent { font-size: 16px; color: #555; margin-bottom: 18px; }
+.stats-units { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+.stats-unit-col h4 { font-size: 13px; text-transform: uppercase; letter-spacing: .04em; color: #666; margin-bottom: 8px; }
+.stats-unit-col ul { list-style: none; display: flex; flex-direction: column; gap: 6px; font-size: 14px; }
+.stats-unit-col li { display: flex; align-items: center; gap: 8px; }
+.dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+.dot.ok { background: #16a34a; }
+.dot.bad { background: #dc2626; }
+
+.stats-list { display: flex; flex-direction: column; gap: 8px; }
+.stats-row {
+  display: grid; grid-template-columns: 32px 1fr 110px 130px auto;
+  align-items: center; gap: 12px;
+  padding: 10px 14px; border-radius: 8px;
+  border-left: 4px solid transparent;
+  background: var(--soft);
+  font-size: 14px;
+}
+.stats-row.ok { border-left-color: #16a34a; background: #eafaf0; }
+.stats-row.bad { border-left-color: #dc2626; background: #fdecec; }
+.srow-num { font-weight: 700; }
+.srow-text { color: #333; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.srow-correct, .srow-chosen { color: #444; }
+.srow-review { padding: 6px 14px; border-radius: 999px; background: var(--blue); color: #fff; font-weight: 600; font-size: 13px; }
+.srow-review:hover { background: #263999; }
+
+/* Màn hình xem lại câu hỏi (dùng lại bố cục during-exam), tô xanh đáp án đúng / đỏ đáp án chọn sai */
+.choice.review { cursor: default; opacity: 1; }
+.choice.review-correct { box-shadow: inset 0 0 0 2px #16a34a; background: #eafaf0; }
+.choice.review-correct .letter { background: #16a34a; border-color: #16a34a; color: #fff; }
+.choice.review-wrong { box-shadow: inset 0 0 0 2px #dc2626; background: #fdecec; }
+.choice.review-wrong .letter { background: #dc2626; border-color: #dc2626; color: #fff; }
+
+@media (max-width: 700px) {
+  .stats-units { grid-template-columns: 1fr; }
+  .stats-row { grid-template-columns: 24px 1fr; grid-template-areas: "num text" "correct chosen" "review review"; row-gap: 4px; }
+  .srow-num { grid-area: num; } .srow-text { grid-area: text; }
+  .srow-correct { grid-area: correct; } .srow-chosen { grid-area: chosen; }
+  .srow-review { grid-area: review; width: 100%; text-align: center; }
+}
+
+@media (max-width: 800px) {
+  .stage.split { flex-direction: column; }
+  .stage.split .pane { width: 100%; flex: 1; padding: 20px; }
+  .stage.split .pane.left { border-right: 0; border-bottom: 4px solid #888; }
+  .topbar, .footbar { padding: 0 12px; }
+  .tool span { display: none; }
+  .calc { width: 90vw !important; height: 70vh !important; right: 5vw; }
+}
