@@ -28,14 +28,20 @@ const state = {
   idx: 0,
   answers: [],
   marked: [],
-  crossed: [],
-  elimMode: false,
+  crossed: [],             // các đáp án bị gạch, mỗi câu 1 Set
+  elimMode: false,         // bật/tắt hiện nút tròn gạch đáp án (nút ABC)
   secondsLeft: 0,
   finished: false,
   correctIndex: [],        // đáp án đúng từng câu — chỉ có SAU khi nộp bài (get_attempt_review)
   finalScore: null,
   finalTotal: null,
-  secondsUsed: null         // MỚI: lưu lại thời gian đã làm bài để hiện ở trang thống kê
+  secondsUsed: null,       // thời gian đã làm bài, dùng ở trang thống kê
+
+  view: "gate",            // màn hình hiện tại: gate | question | review | done
+  highlights: [],          // MỚI: mỗi câu 1 mảng [{id, target, start, end, color, note}]
+  hlMode: false,           // MỚI: đang bật Highlights & Notes
+  activeHlId: null,        // MỚI: highlight vừa tạo note, để tự focus vào ô note
+  lastColor: "yellow"
 };
 
 /* ============ 2. CỔNG VÀO ============ */
@@ -113,14 +119,14 @@ $("gate-form").onsubmit = async (e) => {
 
 /* ============ 3. TẢI CÂU HỎI TỪ SUPABASE ============ */
 async function loadQuestions() {
-  console.log("DEBUG state.examId =", state.examId); // MỚI: kiểm tra đúng exam_id đang dùng để lọc câu hỏi
+  console.log("DEBUG state.examId =", state.examId);
   const { data: questions, error: qErr } = await sb
     .from("questions_public")
     .select("*")
     .eq("exam_id", state.examId)
     .order("question_number");
   if (qErr) {
-    console.error("Lỗi tải câu hỏi:", qErr); // MỚI: in lỗi thật ra Console để biết chính xác nguyên nhân
+    console.error("Lỗi tải câu hỏi:", qErr);
     $("stage").innerHTML = `<div class="loading">Lỗi tải câu hỏi: ${qErr.message}</div>`;
     return;
   }
@@ -150,6 +156,7 @@ async function loadQuestions() {
   state.marked = state.QUESTIONS.map(() => false);
   state.crossed = state.QUESTIONS.map(() => new Set());
   state.correctIndex = state.QUESTIONS.map(() => null);
+  state.highlights = state.QUESTIONS.map(() => []);
 }
 
 /* ============ 4. ĐỒNG BỘ CÂU TRẢ LỜI LÊN SERVER (không chặn UI) ============ */
@@ -173,7 +180,7 @@ function syncAnswer(i) {
   }).then(({ error }) => { if (error) console.warn("Lỗi lưu câu trả lời:", error.message); });
 }
 
-/* Bố cục chia đôi (ảnh | câu hỏi) có thanh kéo ở giữa */
+/* ============ 5A. BỐ CỤC CHIA ĐÔI (ảnh | câu hỏi) CÓ THANH KÉO ============ */
 let splitPct = 50; // % chiều rộng cột ảnh, nhớ lại khi chuyển câu
 
 function mountSplit(leftHtml, rightHtml) {
@@ -203,7 +210,265 @@ function mountSplit(leftHtml, rightHtml) {
     divider.addEventListener("pointerup", up);
   };
 }
+
+let popCtx = null; 
+
+function newHlId() {
+  return "h" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+}
+function findHl(i, id) {
+  return (state.highlights[i] || []).find((h) => h.id === id);
+}
+function removeHighlight(i, id) {
+  state.highlights[i] = (state.highlights[i] || []).filter((h) => h.id !== id);
+}
+
+// Thêm highlight mới; phần nào đè lên highlight cũ thì cắt highlight cũ lại
+function addHighlight(i, h) {
+  const out = [];
+  (state.highlights[i] || []).forEach((e) => {
+    if (e.target !== h.target || e.end <= h.start || e.start >= h.end) { out.push(e); return; }
+    const hasLeft = e.start < h.start;
+    const hasRight = e.end > h.end;
+    if (hasLeft) out.push({ ...e, end: h.start });
+    if (hasRight) out.push({ ...e, id: newHlId(), start: h.end, note: hasLeft ? null : e.note });
+  });
+  const id = newHlId();
+  out.push({ ...h, id });
+  state.highlights[i] = out;
+  state.lastColor = h.color;
+  return id;
+}
+
+// Đếm số ký tự từ đầu khối chữ tới một điểm trong DOM
+function offsetIn(container, node, off) {
+  const r = document.createRange();
+  r.selectNodeContents(container);
+  r.setEnd(node, off);
+  return r.toString().length;
+}
+
+// Bọc đoạn chữ [start, end) trong khối bằng thẻ <mark> (xử lý được cả khi chữ nằm trong nhiều thẻ con)
+function wrapRange(container, start, end, h) {
+  const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT);
+  const nodes = [];
+  while (walker.nextNode()) nodes.push(walker.currentNode);
+  let pos = 0;
+  nodes.forEach((node) => {
+    const nStart = pos;
+    const nEnd = pos + node.nodeValue.length;
+    pos = nEnd;
+    const s = Math.max(start, nStart);
+    const e = Math.min(end, nEnd);
+    if (s >= e) return;
+    let target = node;
+    if (s > nStart) target = target.splitText(s - nStart);
+    if (e < nEnd) target.splitText(e - s);
+    const mark = document.createElement("mark");
+    mark.className = `hl hl-${h.color}${h.note != null ? " has-note" : ""}`;
+    mark.dataset.id = h.id;
+    target.parentNode.replaceChild(mark, target);
+    mark.appendChild(target);
+  });
+}
+
+function applyHighlightsToStage() {
+  const list = (state.highlights[state.idx] || []).slice().sort((a, b) => a.start - b.start);
+  document.querySelectorAll("#stage [data-hl]").forEach((container) => {
+    list.filter((h) => h.target === container.dataset.hl).forEach((h) => wrapRange(container, h.start, h.end, h));
+  });
+}
+
+/* ----- Khung nhỏ chọn màu / Note / Remove ----- */
+function ensureHlPopover() {
+  let pop = $("hl-pop");
+  if (pop) return pop;
+  pop = document.createElement("div");
+  pop.id = "hl-pop";
+  pop.className = "hl-pop";
+  pop.hidden = true;
+  pop.innerHTML = `
+    <button class="hl-swatch hl-yellow" data-color="yellow" title="Yellow"></button>
+    <button class="hl-swatch hl-green" data-color="green" title="Green"></button>
+    <button class="hl-swatch hl-pink" data-color="pink" title="Pink"></button>
+    <span class="hl-sep"></span>
+    <button class="hl-act" data-act="note">Note</button>
+    <button class="hl-act hl-remove" data-act="remove" hidden>Remove</button>`;
+  pop.onmousedown = (e) => e.preventDefault(); // giữ nguyên vùng đang bôi
+  pop.onclick = onPopClick;
+  document.body.appendChild(pop);
+  return pop;
+}
+
+function showHlPopover(rect, isExisting) {
+  const pop = ensureHlPopover();
+  pop.querySelector(".hl-remove").hidden = !isExisting;
+  pop.hidden = false;
+  const w = pop.offsetWidth, h = pop.offsetHeight;
+  let top = rect.top - h - 8;
+  if (top < 8) top = rect.bottom + 8;
+  let left = rect.left + rect.width / 2 - w / 2;
+  left = Math.max(8, Math.min(left, window.innerWidth - w - 8));
+  pop.style.top = top + "px";
+  pop.style.left = left + "px";
+}
+
+function hideHlPopover() {
+  const pop = $("hl-pop");
+  if (pop) pop.hidden = true;
+  popCtx = null;
+}
+
+function onPopClick(e) {
+  const ctx = popCtx;
+  if (!ctx) return;
+  const i = state.idx;
+  const colorBtn = e.target.closest("[data-color]");
+  const actBtn = e.target.closest("[data-act]");
+
+  if (colorBtn) {
+    const color = colorBtn.dataset.color;
+    if (ctx.existingId) {
+      const h = findHl(i, ctx.existingId);
+      if (h) { h.color = color; state.lastColor = color; }
+    } else if (ctx.pending) {
+      addHighlight(i, { ...ctx.pending, color, note: null });
+    }
+  } else if (actBtn && actBtn.dataset.act === "note") {
+    let id = ctx.existingId;
+    if (id) {
+      const h = findHl(i, id);
+      if (h && h.note == null) h.note = "";
+    } else if (ctx.pending) {
+      id = addHighlight(i, { ...ctx.pending, color: state.lastColor, note: "" });
+    }
+    state.activeHlId = id;
+  } else if (actBtn && actBtn.dataset.act === "remove") {
+    removeHighlight(i, ctx.existingId);
+  } else {
+    return;
+  }
+
+  hideHlPopover();
+  const sel = window.getSelection();
+  if (sel) sel.removeAllRanges();
+  renderQuestion();
+}
+
+// Sau khi thả chuột: nếu đang bôi chữ trong đề → hiện khung nhỏ; nếu bấm vào chữ đã highlight → hiện khung sửa
+function onPointerUp(e) {
+  if (!state.hlMode || state.view !== "question" || state.finished) return;
+  if (e.target.closest && e.target.closest("#hl-pop, .notes-panel")) return;
+
+  setTimeout(() => {
+    const sel = window.getSelection();
+    if (!sel || sel.rangeCount === 0 || sel.isCollapsed) {
+      const mark = e.target.closest && e.target.closest("mark.hl");
+      if (mark) {
+        popCtx = { existingId: mark.dataset.id };
+        showHlPopover(mark.getBoundingClientRect(), true);
+      }
+      return;
+    }
+    const range = sel.getRangeAt(0);
+    const node = range.commonAncestorContainer;
+    const el = node.nodeType === 1 ? node : node.parentElement;
+    const container = el && el.closest("[data-hl]");
+    if (!container) { hideHlPopover(); return; }
+
+    const start = offsetIn(container, range.startContainer, range.startOffset);
+    const end = offsetIn(container, range.endContainer, range.endOffset);
+    if (end <= start) return;
+
+    popCtx = { pending: { target: container.dataset.hl, start, end } };
+    showHlPopover(range.getBoundingClientRect(), false);
+  }, 20);
+}
+document.addEventListener("pointerup", onPointerUp);
+document.addEventListener("pointerdown", (e) => {
+  if (!e.target.closest || !e.target.closest("#hl-pop")) hideHlPopover();
+});
+
+// Vẫn chặn copy chữ đề (chống chép đề), trừ khi đang gõ trong ô note
+document.addEventListener("copy", (e) => {
+  if (document.activeElement && document.activeElement.tagName === "TEXTAREA") return;
+  e.preventDefault();
+});
+
+function flashMarks(id) {
+  document.querySelectorAll(`#stage mark.hl[data-id="${id}"]`).forEach((m) => {
+    m.classList.add("hl-flash");
+    setTimeout(() => m.classList.remove("hl-flash"), 1200);
+  });
+}
+
+/* ----- Cột Notes bên phải ----- */
+function renderNotesPanel() {
+  const stage = $("stage");
+  stage.classList.remove("with-notes");
+  if (!state.hlMode) return;
+
+  const i = state.idx;
+  const list = (state.highlights[i] || [])
+    .filter((h) => h.note != null)
+    .sort((a, b) => a.target.localeCompare(b.target) || a.start - b.start);
+
+  const cards = list.map((h) => {
+    const c = stage.querySelector(`[data-hl="${h.target}"]`);
+    let snip = c ? c.textContent.slice(h.start, h.end).trim() : "";
+    if (snip.length > 120) snip = snip.slice(0, 120) + "…";
+    return `
+      <div class="note-card ${state.activeHlId === h.id ? "active" : ""}" data-id="${h.id}">
+        <button class="note-del" data-id="${h.id}" title="Delete highlight and note">×</button>
+        <div class="note-quote-wrap"><span class="note-quote hl-${h.color}">${escapeHtml(snip)}</span></div>
+        <textarea class="note-text" data-id="${h.id}" placeholder="Type your note here...">${escapeHtml(h.note)}</textarea>
+      </div>`;
+  }).join("");
+
+  const panel = document.createElement("aside");
+  panel.className = "notes-panel";
+  panel.innerHTML = `
+    <div class="notes-head">Notes</div>
+    ${cards || `<p class="notes-empty">Select text in the question, then pick a color to highlight it, or choose “Note” to add a note.</p>`}`;
+  stage.appendChild(panel);
+  stage.classList.add("with-notes");
+
+  panel.querySelectorAll(".note-text").forEach((ta) => {
+    ta.oninput = () => { const h = findHl(state.idx, ta.dataset.id); if (h) h.note = ta.value; };
+    ta.onfocus = () => flashMarks(ta.dataset.id);
+  });
+  panel.querySelectorAll(".note-del").forEach((b) => {
+    b.onclick = () => { removeHighlight(state.idx, b.dataset.id); renderQuestion(); };
+  });
+
+  if (state.activeHlId) {
+    const ta = panel.querySelector(`.note-text[data-id="${state.activeHlId}"]`);
+    if (ta) ta.focus();
+    state.activeHlId = null;
+  }
+}
+
+/* ----- Nút "Highlights & Notes" trên thanh trên cùng (tự thêm bằng JS, không cần sửa HTML) ----- */
+(function injectHlButton() {
+  const tools = document.querySelector(".tools");
+  if (!tools || $("hl-btn")) return;
+  tools.insertAdjacentHTML("afterbegin", `
+    <button id="hl-btn" class="tool" title="Highlights &amp; Notes">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>
+      <span>Highlights &amp; Notes</span>
+    </button>`);
+  $("hl-btn").onclick = () => {
+    state.hlMode = !state.hlMode;
+    $("hl-btn").classList.toggle("on", state.hlMode);
+    hideHlPopover();
+    if (state.view === "question" && !state.finished) renderQuestion();
+  };
+})();
+
+/* ============ 5. RENDER CÂU HỎI ============ */
 function renderQuestion() {
+  state.view = "question";
+  hideHlPopover();
   const QUESTIONS = state.QUESTIONS;
   const q = QUESTIONS[state.idx];
   const i = state.idx;
@@ -220,20 +485,30 @@ function renderQuestion() {
         <button class="elim ${state.elimMode ? "on" : ""}" id="elim-btn" title="Eliminate answers">ABC</button>
       </div>
     </div>
-    <div class="qtext">${q.text}</div>
+    <div class="qtext" data-hl="q">${q.text}</div>
     <div id="choices">
-      ${q.choices.map((c, k) => `
-        <button class="choice ${state.answers[i] === k ? "picked" : ""} ${state.crossed[i].has(k) ? "gone" : ""}" data-k="${k}">
-          <span class="letter">${LETTERS[k]}</span>
-          <span class="ctext">${c}</span>
-        </button>`).join("")}
+      ${q.choices.map((c, k) => {
+        const crossed = state.crossed[i].has(k);
+        return `
+        <div class="choice-row">
+          <button class="choice ${state.answers[i] === k ? "picked" : ""} ${crossed ? "gone" : ""}" data-k="${k}">
+            <span class="letter">${LETTERS[k]}</span>
+            <span class="ctext">${c}</span>
+          </button>
+          ${state.elimMode
+            ? (crossed
+                ? `<button class="xbtn undo" data-x="${k}" title="Undo">Undo</button>`
+                : `<button class="xbtn" data-x="${k}" title="Cross out choice ${LETTERS[k]}"><span class="xl">${LETTERS[k]}</span></button>`)
+            : ""}
+        </div>`;
+      }).join("")}
     </div>`;
 
   if (hasImage) {
     mountSplit(
       `<figure class="pane-inner stimulus">
         <img src="${q.image.src}" alt="${q.image.alt || ""}">
-        ${q.image.caption ? `<figcaption>${q.image.caption}</figcaption>` : ""}
+        ${q.image.caption ? `<figcaption data-hl="cap">${q.image.caption}</figcaption>` : ""}
       </figure>`,
       `<div class="pane-inner">${questionHtml}</div>`
     );
@@ -244,21 +519,35 @@ function renderQuestion() {
 
   $("mark-btn").onclick = () => { state.marked[i] = !state.marked[i]; syncAnswer(i); renderQuestion(); };
   $("elim-btn").onclick = () => { state.elimMode = !state.elimMode; renderQuestion(); };
+
+  // Bấm vào đáp án = chọn đáp án đó (nếu đang bị gạch thì tự bỏ gạch)
   document.querySelectorAll(".choice").forEach((el) => {
     el.onclick = () => {
       const k = Number(el.dataset.k);
-      if (state.elimMode) {
-        const set = state.crossed[i];
-        set.has(k) ? set.delete(k) : set.add(k);
-        if (state.answers[i] === k) { state.answers[i] = null; syncAnswer(i); }
+      state.crossed[i].delete(k);
+      state.answers[i] = k;
+      syncAnswer(i);
+      renderQuestion();
+    };
+  });
+  // Bấm nút tròn bên cạnh = gạch / bỏ gạch đáp án
+  document.querySelectorAll(".xbtn").forEach((el) => {
+    el.onclick = () => {
+      const k = Number(el.dataset.x);
+      const set = state.crossed[i];
+      if (set.has(k)) {
+        set.delete(k);
       } else {
-        state.answers[i] = k;
-        state.crossed[i].delete(k);
-        syncAnswer(i);
+        set.add(k);
+        if (state.answers[i] === k) { state.answers[i] = null; syncAnswer(i); }
       }
       renderQuestion();
     };
   });
+
+  applyHighlightsToStage();
+  renderNotesPanel();
+  $("stage").classList.toggle("hl-on", state.hlMode);
 
   $("nav-btn").textContent = `Question ${i + 1} of ${QUESTIONS.length}`;
   $("nav-btn").style.display = "";
@@ -308,6 +597,8 @@ $("review-btn").onclick = () => {
 };
 
 function renderBigReview() {
+  state.view = "review";
+  hideHlPopover();
   const unanswered = state.answers.filter((a) => a === null).length;
 
   $("nav-btn").style.display = "none";
@@ -381,6 +672,8 @@ function stripHtml(html) {
 async function finish() {
   if (state.finished) return; // tránh gọi finish() nhiều lần (vd. hết giờ + bấm Finish cùng lúc)
   state.finished = true;
+  state.view = "done";
+  hideHlPopover();
   clearInterval(tick); // dừng đếm ngay lập tức khi nộp bài, không chờ tick kế tiếp
   exitFullscreenMode(); // nộp bài xong thì không cần theo dõi thoát toàn màn hình nữa
 
@@ -393,7 +686,7 @@ async function finish() {
   $("stage").innerHTML = `<div class="loading">Đang chấm điểm...</div>`;
 
   const secondsUsed = state.totalSeconds - Math.max(0, state.secondsLeft);
-  state.secondsUsed = secondsUsed; // MỚI: lưu lại vào state để trang thống kê dùng được sau này
+  state.secondsUsed = secondsUsed;
   const { data, error } = await sb.rpc("finish_attempt", {
     p_attempt_id: state.attemptId,
     p_seconds_used: secondsUsed
@@ -454,7 +747,6 @@ function computeStats() {
   // chỉ dùng điểm từ server khi chưa có đáp án nào để đối chiếu.
   const haveKey = state.correctIndex.some((c) => c != null);
   const correctCount = haveKey ? correct : (state.finalScore ?? 0);
-  // MỚI: thời gian đã làm bài, lấy từ state (đã lưu lại trong finish()), format mm:ss + số phút làm tròn
   const secondsUsed = state.secondsUsed;
   const minutesUsed = secondsUsed != null ? Math.round(secondsUsed / 60) : null;
   return {
@@ -547,10 +839,12 @@ function renderReview(i) {
         if (k === correctIdx) cls += " review-correct";
         else if (k === chosen) cls += " review-wrong";
         return `
-        <button class="choice ${cls}" disabled>
-          <span class="letter">${LETTERS[k]}</span>
-          <span class="ctext">${c}</span>
-        </button>`;
+        <div class="choice-row">
+          <button class="choice ${cls}" disabled>
+            <span class="letter">${LETTERS[k]}</span>
+            <span class="ctext">${c}</span>
+          </button>
+        </div>`;
       }).join("")}
     </div>`;
 
