@@ -336,3 +336,42 @@ mark.hl.hl-flash { outline: 2px solid var(--blue); }
 @media (max-width: 800px) {
   .notes-panel { top: auto; bottom: 12px; left: 12px; right: 12px; width: auto; max-height: 40%; }
 }
+
+.timer-row { display: flex; align-items: center; gap: 8px; }
+.battery {
+  display: flex; align-items: center; gap: 4px;
+  font-size: 11px; font-weight: 600; color: #555;
+  border: 1px solid var(--line); border-radius: 999px;
+  padding: 1px 8px;
+}
+.battery .bat-icon {
+  width: 16px; height: 9px; border: 1.5px solid #555; border-radius: 2px;
+  position: relative; display: inline-block;
+}
+.battery .bat-icon::after {
+  content: ""; position: absolute; right: -4px; top: 2px;
+  width: 2px; height: 4px; background: #555; border-radius: 0 1px 1px 0;
+}
+.battery .bat-fill {
+  position: absolute; left: 1px; top: 1px; bottom: 1px;
+  background: #16a34a; border-radius: 1px;
+}
+.battery.low .bat-fill { background: #dc2626; }
+.battery.low { color: #dc2626; border-color: #dc2626; }
+.battery.charging .bat-icon::before {
+  content: "⚡"; position: absolute; left: 2px; top: -2px; font-size: 9px;
+}
+
+.ctext-table {
+  border-collapse: collapse;
+  margin: 2px 0;
+  font-family: "Noto Serif", serif;
+  font-size: 15.5px;
+}
+.ctext-table th, .ctext-table td {
+  border: 1px solid #444;
+  padding: 6px 18px;
+  text-align: center;
+}
+.ctext-table th { background: var(--soft); font-weight: 700; }
+.choice.gone .ctext-table { opacity: .45; text-decoration: line-through; }

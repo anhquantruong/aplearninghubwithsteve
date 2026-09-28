@@ -196,6 +196,31 @@ function escapeHtml(s) {
   div.textContent = s;
   return div.innerHTML;
 }
+// ===== Tự nhận diện đáp án dạng bảng: "Label1: Value1 / Label2: Value2 / ..." =====
+function parseChoiceTable(text) {
+  if (!text || !text.includes("/") || !text.includes(":")) return null;
+  const parts = text.split("/").map((s) => s.trim()).filter(Boolean);
+  if (parts.length < 2) return null;
+  const pairs = [];
+  for (const part of parts) {
+    const idx = part.indexOf(":");
+    if (idx === -1) return null;
+    const label = part.slice(0, idx).trim();
+    const value = part.slice(idx + 1).trim();
+    if (!label || !value) return null;
+    pairs.push({ label, value });
+  }
+  return pairs;
+}
+
+function renderChoiceBody(text) {
+  const pairs = parseChoiceTable(text);
+  if (!pairs) return `<span class="ctext">${text}</span>`;
+  return `<table class="ctext-table">
+    <thead><tr>${pairs.map((p) => `<th>${escapeHtml(p.label)}</th>`).join("")}</tr></thead>
+    <tbody><tr>${pairs.map((p) => `<td>${escapeHtml(p.value)}</td>`).join("")}</tr></tbody>
+  </table>`;
+}
 function setupWatermark(name, email) {
   const label = escapeHtml(`${name} • ${email}`);
   $("watermark").innerHTML = Array(120).fill(`<span>${label}</span>`).join("");
@@ -522,7 +547,7 @@ function renderQuestion() {
         <div class="choice-row">
           <button class="choice ${state.answers[i] === k ? "picked" : ""} ${crossed ? "gone" : ""}" data-k="${k}">
             <span class="letter">${LETTERS[k]}</span>
-            <span class="ctext">${c}</span>
+            ${renderChoiceBody(c)}
           </button>
           ${state.elimMode
             ? (crossed
@@ -869,7 +894,7 @@ function renderReview(i) {
         <div class="choice-row">
           <button class="choice ${cls}" disabled>
             <span class="letter">${LETTERS[k]}</span>
-            <span class="ctext">${c}</span>
+            ${renderChoiceBody(c)}
           </button>
         </div>`;
       }).join("")}
