@@ -18,6 +18,31 @@ function getAccessCodeFromUrl() {
   return parts[parts.length - 1] || "";
 }
 const ACCESS_CODE = getAccessCodeFromUrl();
+/* ============ 0B. CHẶN ĐIỆN THOẠI: chỉ cho iPad / laptop / desktop ============
+ * Heuristic: dựa vào user agent (điện thoại luôn có "Mobi" hoặc tên hệ điều hành
+ * di động cụ thể) kết hợp bề rộng màn hình, vì iPad hiện đại giả UA giống Mac.
+ */
+function isPhoneDevice() {
+  const ua = navigator.userAgent || "";
+  const isIpad = /iPad/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
+  if (isIpad) return false; // iPad (kể cả giả UA Mac) luôn được phép
+
+  const isAndroidPhone = /Android/.test(ua) && /Mobile/.test(ua);
+  const isOtherMobile = /iPhone|iPod|Windows Phone|BlackBerry|Opera Mini|IEMobile/.test(ua);
+  if (isAndroidPhone || isOtherMobile) return true;
+
+  // Android tablet (không có "Mobile" trong UA) được coi như laptop -> cho phép
+  // Dự phòng thêm: màn hình quá nhỏ (điện thoại) dù UA không rõ ràng
+  const smallScreen = Math.min(window.innerWidth, window.innerHeight) < 500;
+  return smallScreen && /Android/.test(ua);
+}
+
+if (isPhoneDevice()) {
+  document.addEventListener("DOMContentLoaded", () => {
+    $("gate-screen").hidden = true;
+    $("device-block").hidden = false;
+  });
+}
 
 /* ============ 1. TRẠNG THÁI ============ */
 const state = {
@@ -65,6 +90,12 @@ const state = {
 
 $("gate-form").onsubmit = async (e) => {
   e.preventDefault();
+
+  if (isPhoneDevice()) {
+    $("gate-screen").hidden = true;
+    $("device-block").hidden = false;
+    return;
+  }
   const email = $("gate-email").value.trim();
   const password = $("gate-password").value;
   if (!email || !password) return;

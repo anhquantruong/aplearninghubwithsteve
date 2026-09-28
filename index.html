@@ -10,11 +10,7 @@
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-
-<!-- Watermark tên + email học sinh, phủ mờ toàn trang, không chặn thao tác click -->
 <div id="watermark" class="watermark" aria-hidden="true"></div>
-
-<!-- CỔNG VÀO: hiện trước tiên, ẩn hết phần thi cho tới khi qua được bước này -->
 <div id="gate-screen" class="gate-screen">
 <form id="gate-form" class="gate-box">
 <div class="rainbow"></div>
@@ -31,7 +27,12 @@
 <div id="gate-error" class="status err"></div>
 </form>
 </div>
-
+<div id="device-block" class="fs-overlay" hidden>
+  <div class="fs-overlay-box">
+    <h3>📵 Not supported on phones</h3>
+    <p>This test can only be taken on an iPad or a laptop/desktop computer. Please switch devices to continue.</p>
+  </div>
+</div>
 <div id="app-root" class="app" hidden>
 <header class="topbar">
 <div class="title">
@@ -78,7 +79,7 @@
 <button id="calc-close" class="x">×</button>
 </div>
 <div id="calc-desmos" class="calc-desmos"></div>
-<div id="calc-resize-handle" class="calc-resize-handle" title="Kéo để đổi kích thước"></div>
+<div id="calc-resize-handle" class="calc-resize-handle" title=""></div>
 </div>
 
 <!-- Cảnh báo khi thoát toàn màn hình trong lúc thi (dưới ngưỡng bị huỷ bài) -->
@@ -95,7 +96,7 @@
 <div class="fs-overlay-box">
 <h3>❌ Your work is canceled</h3>
 <p>Test taker has logged out of the test window over 3 times. Please restart your test!</p>
-<button id="fs-restart-btn" class="btn wide">Do again</button>
+<button id="fs-restart-btn" class="btn wide">Take again</button>
 </div>
 </div>
 
