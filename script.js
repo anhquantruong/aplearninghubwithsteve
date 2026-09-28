@@ -425,13 +425,11 @@ function renderNotesPanel() {
       </div>`;
   }).join("");
 
+  if (!cards) return; // chưa có note nào thì không hiện panel
   const panel = document.createElement("aside");
   panel.className = "notes-panel";
-  panel.innerHTML = `
-    <div class="notes-head">Notes</div>
-    ${cards || `<p class="notes-empty">Select text in the question, then pick a color to highlight it, or choose “Note” to add a note.</p>`}`;
+  panel.innerHTML = `<div class="notes-head">Notes</div>${cards}`;
   stage.appendChild(panel);
-  stage.classList.add("with-notes");
 
   panel.querySelectorAll(".note-text").forEach((ta) => {
     ta.oninput = () => { const h = findHl(state.idx, ta.dataset.id); if (h) h.note = ta.value; };

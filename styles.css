@@ -266,3 +266,73 @@ input { font: inherit; }
   .tool span { display: none; }
   .calc { width: 90vw !important; height: 70vh !important; right: 5vw; }
 }
+/* ===== Topbar: Highlights & Notes + Calculator nằm ngang ===== */
+.tools { display: flex; flex-direction: row; align-items: center; gap: 4px; }
+.tool.on { background: #eef1fc; color: var(--blue); }
+
+/* ===== Nút tròn gạch đáp án (cross-out) nằm cạnh mỗi choice ===== */
+.choice-row { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+.choice-row .choice { flex: 1; min-width: 0; margin-bottom: 0; }
+.xbtn {
+  flex: none; width: 28px; height: 28px; border-radius: 50%;
+  border: 1.5px solid #525252; background: #fff; color: #525252;
+  display: grid; place-items: center; font-size: 12px; font-weight: 700;
+}
+.xbtn:hover { background: #f3f4f6; }
+.xbtn .xl { position: relative; display: inline-block; line-height: 1; }
+.xbtn .xl::after {            /* nét gạch ngang qua chữ cái */
+  content: ""; position: absolute; left: -3px; right: -3px; top: 50%;
+  height: 1.5px; background: currentColor;
+}
+.xbtn.undo { width: auto; padding: 0 10px; border-radius: 999px; font-size: 12px; }
+
+/* ===== Cho phép bôi chọn chữ (body đang user-select:none nên highlight không chạy) ===== */
+input, textarea { -webkit-user-select: text; user-select: text; }
+.stage.hl-on [data-hl] { -webkit-user-select: text; user-select: text; cursor: text; }
+
+/* ===== Highlight ===== */
+.hl-yellow { background: #fde68a; }
+.hl-green  { background: #bbf7d0; }
+.hl-pink   { background: #fbcfe8; }
+mark.hl { color: inherit; cursor: pointer; border-radius: 2px; }
+mark.hl.has-note { border-bottom: 2px solid rgba(0,0,0,.45); }
+mark.hl.hl-flash { outline: 2px solid var(--blue); }
+
+/* Khung nhỏ chọn màu / Note / Remove */
+.hl-pop {
+  position: fixed; z-index: 200; display: flex; align-items: center; gap: 6px;
+  background: #fff; border: 1px solid var(--line); border-radius: 999px;
+  padding: 6px 10px; box-shadow: 0 4px 16px rgba(0,0,0,.2);
+}
+.hl-swatch { width: 22px; height: 22px; border-radius: 50%; border: 1.5px solid rgba(0,0,0,.25); }
+.hl-sep { width: 1px; height: 18px; background: var(--line); }
+.hl-act { font-size: 13px; font-weight: 600; padding: 2px 8px; border-radius: 999px; }
+.hl-act:hover { background: #f3f4f6; }
+.hl-remove { color: #b91c1c; }
+
+/* ===== Notes: khung nhỏ nổi ở góc phải, KHÔNG chiếm chỗ của câu hỏi ===== */
+.stage { position: relative; }
+.notes-panel {
+  position: absolute; top: 12px; right: 12px; z-index: 30;
+  width: 240px; max-height: calc(100% - 24px); overflow-y: auto;
+  background: #fff; border: 1px solid var(--line); border-radius: 10px;
+  box-shadow: 0 4px 18px rgba(0,0,0,.15); padding: 10px; font-size: 13px;
+}
+.notes-head { font-weight: 700; margin-bottom: 8px; }
+.notes-empty { color: #666; font-size: 12px; line-height: 1.4; }
+.note-card {
+  position: relative; border: 1px solid var(--line); border-radius: 8px;
+  padding: 8px; margin-bottom: 8px; background: #fafafa;
+}
+.note-card.active { border-color: var(--blue); }
+.note-del { position: absolute; top: 2px; right: 6px; font-size: 16px; color: #666; }
+.note-quote-wrap { margin: 0 16px 6px 0; font-family: "Noto Serif", serif; font-size: 12px; line-height: 1.5; }
+.note-quote { padding: 0 2px; }
+.note-text {
+  width: 100%; min-height: 56px; resize: vertical; padding: 6px;
+  border: 1px solid var(--line); border-radius: 6px; font: inherit; font-size: 13px;
+}
+
+@media (max-width: 800px) {
+  .notes-panel { top: auto; bottom: 12px; left: 12px; right: 12px; width: auto; max-height: 40%; }
+}
