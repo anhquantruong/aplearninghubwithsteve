@@ -367,11 +367,14 @@ mark.hl.hl-flash { outline: 2px solid var(--blue); }
   margin: 2px 0;
   font-family: "Noto Serif", serif;
   font-size: 15.5px;
+  width: 100%;
+  table-layout: fixed;
 }
 .ctext-table th, .ctext-table td {
   border: 1px solid #444;
   padding: 6px 18px;
   text-align: center;
+  word-break: break-word;
 }
 .ctext-table th { background: var(--soft); font-weight: 700; }
 .choice.gone .ctext-table { opacity: .45; text-decoration: line-through; }
