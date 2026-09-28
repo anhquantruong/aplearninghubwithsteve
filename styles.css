@@ -1,5 +1,5 @@
 :root {
-  --blue: #324dc7;
+  --blue: #001881;
   --ink: #1a1a1a;
   --line: #d1d5db;
   --soft: #f1f2f3;
@@ -128,15 +128,12 @@ input { font: inherit; }
 .btn.secondary { background: #fff; color: var(--blue); box-shadow: inset 0 0 0 1.5px var(--blue); }
 .btn.secondary:hover { background: #eef1fc; }
 
-/* Overlay cảnh báo / khoá bài khi thoát toàn màn hình */
 .fs-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.55); display: flex; align-items: center; justify-content: center; z-index: 100; padding: 20px; }
 .fs-overlay[hidden] { display: none; }
 .fs-overlay-box { background: #fff; border-radius: 12px; padding: 28px 26px; max-width: 420px; width: 100%; text-align: center; box-shadow: 0 12px 40px rgba(0,0,0,.3); }
 .fs-overlay-box h3 { font-size: 18px; margin-bottom: 10px; }
 .fs-overlay-box p { font-size: 14px; color: #444; line-height: 1.5; margin-bottom: 18px; }
 
-/* Watermark tên + email, phủ mờ khắp trang, nằm trên cùng nhưng gần như trong suốt
-   nên không cản việc đọc/làm bài — pointer-events:none để không chặn click */
 .watermark {
   position: fixed;
   top: -20%; left: -20%;
@@ -160,7 +157,6 @@ input { font: inherit; }
   margin: 26px 34px;
 }
 
-/* Calculator (Desmos four-function) — kéo tay cầm ở góc dưới-phải để phóng to/thu nhỏ tự do */
 .calc {
   position: fixed; top: 100px; right: 40px;
   width: 340px; height: 420px;
@@ -176,10 +172,6 @@ input { font: inherit; }
 .calc-head .x:hover { background: rgba(0,0,0,.08); border-radius: 4px; }
 .calc-desmos { flex: 1; min-height: 0; width: 100%; position: relative; }
 
-/* Tay cầm resize tự vẽ bằng JS — không dùng CSS "resize" mặc định của trình duyệt vì
-   widget Desmos bên trong chiếm trọn vùng góc dưới-phải, khiến trình duyệt không
-   bắt được thao tác kéo ở đúng góc đó. Tay cầm này nổi lên trên (z-index cao hơn)
-   nên luôn nhận được thao tác chuột trước khi Desmos kịp xử lý. */
 .calc-resize-handle {
   position: absolute; right: 0; bottom: 0;
   width: 20px; height: 20px;
@@ -194,14 +186,12 @@ input { font: inherit; }
   border-width: 0 0 11px 11px;
   border-color: transparent transparent #6b7280 transparent;
 }
-.calc-resize-handle:hover::after { border-color: transparent transparent #324dc7 transparent; }
+.calc-resize-handle:hover::after { border-color: transparent transparent #001881 transparent; }
 
-/* Results */
 .result { max-width: 34rem; margin: 15vh auto 0; text-align: center; padding: 0 20px; }
 .result h2 { font-size: 26px; margin-bottom: 8px; }
 .result .score { font-size: 56px; font-weight: 700; color: var(--blue); margin: 12px 0; }
 
-/* Chúc mừng hoàn thành bài thi */
 .congrats { max-width: 30rem; margin: 16vh auto 0; text-align: center; padding: 0 20px; }
 .congrats-icon { font-size: 52px; margin-bottom: 10px; }
 .congrats h2 { font-size: 24px; margin-bottom: 8px; }
@@ -211,8 +201,20 @@ input { font: inherit; }
 /* Trang thống kê sau khi xem kết quả */
 .stats-page { max-width: 52rem; margin: 0 auto; padding: 40px 24px 100px; }
 .stats-card { border: 1px solid var(--line); border-radius: 12px; padding: 24px 28px; margin-bottom: 24px; box-shadow: 0 4px 18px rgba(0,0,0,.06); }
-.stats-score { font-size: 44px; font-weight: 700; color: var(--blue); }
-.stats-percent { font-size: 16px; color: #555; margin-bottom: 18px; }
+
+/* MỚI: hàng 3 ô thống kê nhanh — số câu đúng / tỉ lệ đúng / thời gian làm bài */
+.stats-summary {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-bottom: 22px;
+  padding-bottom: 22px;
+  border-bottom: 1px solid var(--line);
+}
+.stat-box { text-align: center; }
+.stat-value { font-size: 32px; font-weight: 700; color: var(--blue); line-height: 1.2; }
+.stat-label { font-size: 13px; color: #666; margin-top: 4px; }
+
 .stats-units { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
 .stats-unit-col h4 { font-size: 13px; text-transform: uppercase; letter-spacing: .04em; color: #666; margin-bottom: 8px; }
 .stats-unit-col ul { list-style: none; display: flex; flex-direction: column; gap: 6px; font-size: 14px; }
@@ -236,9 +238,8 @@ input { font: inherit; }
 .srow-text { color: #333; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .srow-correct, .srow-chosen { color: #444; }
 .srow-review { padding: 6px 14px; border-radius: 999px; background: var(--blue); color: #fff; font-weight: 600; font-size: 13px; }
-.srow-review:hover { background: #263999; }
+.srow-review:hover { background: #001881; }
 
-/* Màn hình xem lại câu hỏi (dùng lại bố cục during-exam), tô xanh đáp án đúng / đỏ đáp án chọn sai */
 .choice.review { cursor: default; opacity: 1; }
 .choice.review-correct { box-shadow: inset 0 0 0 2px #16a34a; background: #eafaf0; }
 .choice.review-correct .letter { background: #16a34a; border-color: #16a34a; color: #fff; }
@@ -246,6 +247,7 @@ input { font: inherit; }
 .choice.review-wrong .letter { background: #dc2626; border-color: #dc2626; color: #fff; }
 
 @media (max-width: 700px) {
+  .stats-summary { grid-template-columns: 1fr; gap: 10px; }
   .stats-units { grid-template-columns: 1fr; }
   .stats-row { grid-template-columns: 24px 1fr; grid-template-areas: "num text" "correct chosen" "review review"; row-gap: 4px; }
   .srow-num { grid-area: num; } .srow-text { grid-area: text; }

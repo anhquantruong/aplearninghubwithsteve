@@ -34,7 +34,8 @@ const state = {
   finished: false,
   correctIndex: [],        // đáp án đúng từng câu — chỉ có SAU khi nộp bài (get_attempt_review)
   finalScore: null,
-  finalTotal: null
+  finalTotal: null,
+  secondsUsed: null         // MỚI: lưu lại thời gian đã làm bài để hiện ở trang thống kê
 };
 
 /* ============ 2. CỔNG VÀO ============ */
@@ -366,6 +367,7 @@ async function finish() {
   $("stage").innerHTML = `<div class="loading">Đang chấm điểm...</div>`;
 
   const secondsUsed = state.totalSeconds - Math.max(0, state.secondsLeft);
+  state.secondsUsed = secondsUsed; // MỚI: lưu lại vào state để trang thống kê dùng được sau này
   const { data, error } = await sb.rpc("finish_attempt", {
     p_attempt_id: state.attemptId,
     p_seconds_used: secondsUsed
@@ -422,12 +424,18 @@ function computeStats() {
   const units = Object.values(byUnit);
   const topCorrect = [...units].filter((u) => u.correct > 0).sort((a, b) => b.correct - a.correct).slice(0, 3);
   const topWrong = [...units].filter((u) => u.wrong > 0).sort((a, b) => b.wrong - a.wrong).slice(0, 3);
+  const correctCount = state.finalScore ?? correct;
+  // MỚI: thời gian đã làm bài, lấy từ state (đã lưu lại trong finish()), format mm:ss + số phút làm tròn
+  const secondsUsed = state.secondsUsed;
+  const minutesUsed = secondsUsed != null ? Math.round(secondsUsed / 60) : null;
   return {
     total,
-    correct: state.finalScore ?? correct,
-    percent: total ? Math.round(((state.finalScore ?? correct) / total) * 100) : 0,
+    correct: correctCount,
+    percent: total ? Math.round((correctCount / total) * 100) : 0,
     topCorrect,
-    topWrong
+    topWrong,
+    secondsUsed,
+    minutesUsed
   };
 }
 
@@ -438,8 +446,20 @@ function renderStats() {
   $("stage").innerHTML = `
     <div class="stats-page">
       <div class="stats-card">
-        <div class="stats-score">${s.correct} / ${s.total}</div>
-        <div class="stats-percent">${s.percent}% câu đúng</div>
+        <div class="stats-summary">
+          <div class="stat-box">
+            <div class="stat-value">${s.correct} / ${s.total}</div>
+            <div class="stat-label">Số câu đúng</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-value">${s.percent}%</div>
+            <div class="stat-label">Tỉ lệ đúng</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-value">${s.secondsUsed != null ? fmt(s.secondsUsed) : "—"}</div>
+            <div class="stat-label">${s.minutesUsed != null ? `Thời gian làm bài (${s.minutesUsed} phút)` : "Thời gian làm bài"}</div>
+          </div>
+        </div>
         <div class="stats-units">
           <div class="stats-unit-col">
             <h4>Top 3 unit làm đúng nhiều nhất</h4>
