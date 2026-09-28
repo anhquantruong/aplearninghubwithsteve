@@ -18,29 +18,28 @@
 <div id="gate-screen" class="gate-screen">
 <form id="gate-form" class="gate-box">
 <div class="rainbow"></div>
-<h1 id="gate-exam-title">Đang tải đề thi...</h1>
-<p class="gate-hint">Nhập thông tin để bắt đầu làm bài.</p>
+<h1 id="gate-exam-title">Downloadinng test.</h1>
+<p class="gate-hint">Please input your information to start the test!</p>
 
-<label>Email</label>
+<label>Your Email Address</label>
 <input id="gate-email" type="email" required placeholder="ban@email.com">
 
-<label>Mật khẩu đề thi</label>
+<label>Test Passcode</label>
 <input id="gate-password" type="password" required placeholder="Do giáo viên cung cấp">
 
-<button type="submit" id="gate-submit" class="btn wide">Bắt đầu làm bài</button>
+<button type="submit" id="gate-submit" class="btn wide">Start</button>
 <div id="gate-error" class="status err"></div>
 </form>
 </div>
 
-<!-- TOÀN BỘ PHẦN THI: ẩn cho tới khi qua cổng vào -->
 <div id="app-root" class="app" hidden>
 <header class="topbar">
 <div class="title">
 <h1>Section I: Multiple Choice</h1>
-<span class="subtitle" id="exam-subtitle">AP Macroeconomics</span>
+<span class="subtitle" id="exam-subtitle">Advanced Placement</span>
 </div>
 <div class="timer-box">
-<div id="timer" class="timer">70:00</div>
+<div id="timer" class="timer">--:--</div>
 <button id="timer-toggle" class="pill">Hide</button>
 </div>
 <div class="tools">
@@ -52,7 +51,7 @@
 <div class="rainbow"></div>
 </header>
 
-<main id="stage" class="stage"><div class="loading">Đang tải câu hỏi...</div></main>
+<main id="stage" class="stage"><div class="loading">Loading questions...</div></main>
 
 <footer class="footbar">
 <div class="rainbow top"></div>
@@ -69,7 +68,7 @@
 <div class="popup-head"><strong>Questions</strong><button id="nav-close" class="x">×</button></div>
 <div id="nav-grid" class="nav-grid"></div>
 <p id="nav-status" class="nav-status"></p>
-<button id="review-btn" class="btn wide">Review overall</button>
+<button id="review-btn" class="btn wide">OVERVIEW</button>
 </div>
 
 <!-- Calculator: Desmos Four-Function Calculator -->
@@ -85,18 +84,18 @@
 <!-- Cảnh báo khi thoát toàn màn hình trong lúc thi (dưới ngưỡng bị huỷ bài) -->
 <div id="fs-warning" class="fs-overlay" hidden>
 <div class="fs-overlay-box">
-<h3>⚠️ Cảnh báo thoát toàn màn hình</h3>
+<h3>⚠️ WARNING: PLEASE RETURN TO THE TEST WINDOW</h3>
 <p id="fs-warning-text"></p>
-<button id="fs-resume-btn" class="btn wide">Quay lại làm bài (toàn màn hình)</button>
+<button id="fs-resume-btn" class="btn wide">Please return working on your test (full-screen)</button>
 </div>
 </div>
 
 <!-- Khoá bài khi thoát toàn màn hình quá số lần cho phép -->
 <div id="fs-lockout" class="fs-overlay" hidden>
 <div class="fs-overlay-box">
-<h3>❌ Bài làm đã bị huỷ</h3>
-<p>Bạn đã thoát toàn màn hình quá số lần cho phép. Vui lòng làm lại bài từ đầu.</p>
-<button id="fs-restart-btn" class="btn wide">Làm lại từ đầu</button>
+<h3>❌ Your work is canceled</h3>
+<p>Test taker has logged out of the test window over 3 times. Please restart your test!</p>
+<button id="fs-restart-btn" class="btn wide">Do again</button>
 </div>
 </div>
 

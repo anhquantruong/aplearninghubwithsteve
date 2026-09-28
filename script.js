@@ -570,7 +570,7 @@ $("next-btn").onclick = () => {
 };
 
 /* ============ 6. NAVIGATOR ============ */
-const FLAG_SVG = `<svg class="navflag" width="20" height="21" viewBox="0 0 24 24"><path d="M6 3h12v18l-6-4-6 4z"/></svg>`;
+const FLAG_SVG = `<svg class="navflag" width="16" height="17" viewBox="0 0 24 24"><path d="M6 3h12v18l-6-4-6 4z"/></svg>`;
 function renderNav() {
   const unanswered = state.answers.filter((a) => a === null).length;
 
