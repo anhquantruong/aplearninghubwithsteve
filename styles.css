@@ -72,7 +72,7 @@ input { font: inherit; }
 .stage.split .pane { width: 50%; }
 .stage.split .pane.left { border-right: 4px solid #888; }
 .stimulus { font-family: "Noto Serif", serif; font-size: 17px; line-height: 1.6; }
-.stimulus img { width: 100%; height: auto; border: 1px solid var(--line); margin-bottom: 12px; }
+.stimulus img { display: block; width: auto; height: auto; max-width: 70%; max-height: 50vh; margin: 0 auto 12px; border: 1px solid var(--line); }
 .stimulus figcaption { font-size: 14px; color: #444; }
 
 /* Question header */
