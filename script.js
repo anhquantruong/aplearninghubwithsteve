@@ -518,7 +518,6 @@ function renderQuestion() {
   $("mark-btn").onclick = () => { state.marked[i] = !state.marked[i]; syncAnswer(i); renderQuestion(); };
   $("elim-btn").onclick = () => { state.elimMode = !state.elimMode; renderQuestion(); };
 
-  // Bấm vào đáp án = chọn đáp án đó (nếu đang bị gạch thì tự bỏ gạch)
   document.querySelectorAll(".choice").forEach((el) => {
     el.onclick = () => {
       const k = Number(el.dataset.k);
@@ -528,7 +527,6 @@ function renderQuestion() {
       renderQuestion();
     };
   });
-  // Bấm nút tròn bên cạnh = gạch / bỏ gạch đáp án
   document.querySelectorAll(".xbtn").forEach((el) => {
     el.onclick = () => {
       const k = Number(el.dataset.x);
@@ -569,7 +567,6 @@ $("next-btn").onclick = () => {
   } else go(state.idx + 1);
 };
 
-/* ============ 6. NAVIGATOR ============ */
 const FLAG_SVG = `<svg class="navflag" width="16" height="17" viewBox="0 0 24 24"><path d="M6 3h12v18l-6-4-6 4z"/></svg>`;
 function renderNav() {
   const unanswered = state.answers.filter((a) => a === null).length;
@@ -610,8 +607,8 @@ function renderBigReview() {
       <p id="bigreview-status" class="nav-status"></p>
       <div id="bigreview-grid" class="nav-grid big"></div>
       <div class="bigreview-actions">
-        <button id="bigreview-back" class="btn secondary wide">Quay lại làm bài</button>
-        <button id="bigreview-submit" class="btn wide" disabled>Nộp bài</button>
+        <button id="bigreview-back" class="btn secondary wide">Return back to questions</button>
+        <button id="bigreview-submit" class="btn wide" disabled>Submit</button>
       </div>
     </div></div>`;
 
@@ -637,29 +634,35 @@ function renderBigReview() {
   $("bigreview-back").onclick = () => go(state.idx);
 }
 
-/* ============ 7. TIMER ============ */
 function fmt(s) {
-  const m = String(Math.floor(s / 60)).padStart(2, "0");
-  return `${m}:${String(s % 60).padStart(2, "0")}`;
+  s = Math.max(0, s);
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = s % 60;
+  if (h > 0) {
+    return `${h}:${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
+  }
+  return `${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
 }
 let tick;
+function updateTimerDisplay() {
+  $("timer").textContent = state.timerHidden ? "--:--" : fmt(state.secondsLeft);
+  $("timer").classList.toggle("low", !state.timerHidden && state.secondsLeft <= 300);
+}
 function startTimer() {
-  $("timer").textContent = fmt(state.secondsLeft);
+  updateTimerDisplay();
   tick = setInterval(() => {
     if (state.finished) return clearInterval(tick);
     state.secondsLeft--;
-    $("timer").textContent = fmt(Math.max(0, state.secondsLeft));
-    $("timer").classList.toggle("low", state.secondsLeft <= 300);
+    updateTimerDisplay();
     if (state.secondsLeft <= 0) finish();
   }, 1000);
 }
 $("timer-toggle").onclick = () => {
-  const hidden = $("timer").style.visibility === "hidden";
-  $("timer").style.visibility = hidden ? "visible" : "hidden";
-  $("timer-toggle").textContent = hidden ? "Hide" : "Show";
+  state.timerHidden = !state.timerHidden;
+  updateTimerDisplay();
+  $("timer-toggle").textContent = state.timerHidden ? "Show" : "Hide";
 };
-
-/* ============ 8. SAU KHI NỘP BÀI: chấm điểm → chúc mừng → trang thống kê → xem lại từng câu ============ */
 
 function stripHtml(html) {
   const div = document.createElement("div");
@@ -668,13 +671,12 @@ function stripHtml(html) {
 }
 
 async function finish() {
-  if (state.finished) return; // tránh gọi finish() nhiều lần (vd. hết giờ + bấm Finish cùng lúc)
+  if (state.finished) return; 
   state.finished = true;
   state.view = "done";
   hideHlPopover();
-  clearInterval(tick); // dừng đếm ngay lập tức khi nộp bài, không chờ tick kế tiếp
-  exitFullscreenMode(); // nộp bài xong thì không cần theo dõi thoát toàn màn hình nữa
-
+  clearInterval(tick); 
+  exitFullscreenMode(); 
   $("nav-popup").hidden = true;
   $("calc").hidden = true;
   document.querySelector(".topbar").style.display = "none";
@@ -720,9 +722,9 @@ function showCongrats(secondsUsed) {
   $("stage").innerHTML = `
     <div class="congrats">
       <div class="congrats-icon">🎉</div>
-      <h2>Chúc mừng bạn đã hoàn thành bài thi!</h2>
-      <p>Thời gian sử dụng: ${fmt(secondsUsed)}</p>
-      <button id="see-result-btn" class="btn wide">Xem kết quả</button>
+      <h2>Congratulations! You have finished the test</h2>
+      <p>Time used: ${fmt(secondsUsed)}</p>
+      <button id="see-result-btn" class="btn wide">See your results</button>
     </div>`;
   $("see-result-btn").onclick = () => renderStats();
 }
@@ -732,7 +734,7 @@ function computeStats() {
   let correct = 0;
   const byUnit = {};
   state.QUESTIONS.forEach((q, i) => {
-    const unit = q.unit || "Chưa phân loại";
+    const unit = q.unit || "";
     if (!byUnit[unit]) byUnit[unit] = { unit, correct: 0, wrong: 0 };
     const isCorrect = state.correctIndex[i] != null && state.answers[i] === state.correctIndex[i];
     if (isCorrect) { byUnit[unit].correct++; correct++; }
@@ -741,8 +743,6 @@ function computeStats() {
   const units = Object.values(byUnit);
   const topCorrect = [...units].filter((u) => u.correct > 0).sort((a, b) => b.correct - a.correct).slice(0, 3);
   const topWrong = [...units].filter((u) => u.wrong > 0).sort((a, b) => b.wrong - a.wrong).slice(0, 3);
-  // Nếu đã lấy được đáp án đúng về (get_attempt_review) thì dùng số đếm này cho khớp với danh sách bên dưới;
-  // chỉ dùng điểm từ server khi chưa có đáp án nào để đối chiếu.
   const haveKey = state.correctIndex.some((c) => c != null);
   const correctCount = haveKey ? correct : (state.finalScore ?? 0);
   const secondsUsed = state.secondsUsed;
@@ -768,24 +768,24 @@ function renderStats() {
         <div class="stats-summary">
           <div class="stat-box">
             <div class="stat-value">${s.correct} / ${s.total}</div>
-            <div class="stat-label">Số câu đúng</div>
+            <div class="stat-label">No. of Correct Questions</div>
           </div>
           <div class="stat-box">
             <div class="stat-value">${s.percent}%</div>
-            <div class="stat-label">Tỉ lệ đúng</div>
+            <div class="stat-label">Correct Percentage</div>
           </div>
           <div class="stat-box">
             <div class="stat-value">${s.secondsUsed != null ? fmt(s.secondsUsed) : "—"}</div>
-            <div class="stat-label">${s.minutesUsed != null ? `Thời gian làm bài (${s.minutesUsed} phút)` : "Thời gian làm bài"}</div>
+            <div class="stat-label">${s.minutesUsed != null ? `Time (${s.minutesUsed} minutes)` : "Thời gian làm bài"}</div>
           </div>
         </div>
         <div class="stats-units">
           <div class="stats-unit-col">
-            <h4>Top 3 unit làm đúng nhiều nhất</h4>
+            <h4></h4>
             <ul>${s.topCorrect.length ? s.topCorrect.map((u) => `<li><span class="dot ok"></span>${u.unit} <b>${u.correct}</b> câu đúng</li>`).join("") : "<li>Chưa có dữ liệu</li>"}</ul>
           </div>
           <div class="stats-unit-col">
-            <h4>Top 3 unit làm sai nhiều nhất</h4>
+            <h4></h4>
             <ul>${s.topWrong.length ? s.topWrong.map((u) => `<li><span class="dot bad"></span>${u.unit} <b>${u.wrong}</b> câu sai</li>`).join("") : "<li>Chưa có dữ liệu</li>"}</ul>
           </div>
         </div>
@@ -815,8 +815,6 @@ function renderStats() {
   });
 }
 
-/* Xem lại 1 câu — dùng lại đúng bố cục màn hình làm bài (during-exam), nhưng
-   khoá tương tác và tô XANH đáp án đúng / ĐỎ đáp án học sinh đã chọn (nếu sai) */
 function renderReview(i) {
   const q = state.QUESTIONS[i];
   const chosen = state.answers[i];
@@ -862,10 +860,9 @@ function renderReview(i) {
   $("review-back-btn").onclick = () => renderStats();
 }
 
-/* ============ 9. MÁY TÍNH DESMOS (FOUR-FUNCTION) — phóng to/thu nhỏ được ============ */
 let desmosCalc = null;
 function ensureDesmosCalculator() {
-  if (desmosCalc) return; // đã khởi tạo rồi thì thôi
+  if (desmosCalc) return; 
   const elt = $("calc-desmos");
   if (elt && window.Desmos) {
     desmosCalc = Desmos.FourFunctionCalculator(elt);
@@ -877,8 +874,6 @@ $("calc-btn").onclick = () => {
 };
 $("calc-close").onclick = () => ($("calc").hidden = true);
 
-// Theo dõi mọi thay đổi kích thước khung máy tính (kéo góc dưới-phải để resize tự do)
-// và báo cho Desmos vẽ lại đúng kích thước mới
 if (window.ResizeObserver) {
   const calcResizeObserver = new ResizeObserver(() => {
     if (desmosCalc) desmosCalc.resize();
@@ -890,13 +885,11 @@ if (window.ResizeObserver) {
   const box = $("calc"), head = $("calc-head");
   let dx = 0, dy = 0, drag = false, minTop = 90;
   head.onmousedown = (e) => {
-    // Bỏ qua nếu bấm vào nút (đóng / phóng to) trong thanh tiêu đề
     if (e.target.closest("button")) return;
     drag = true;
     const r = box.getBoundingClientRect();
     dx = e.clientX - r.left; dy = e.clientY - r.top;
     head.style.cursor = "grabbing";
-    // Giới hạn: mép trên của máy tính không được kéo lên cao hơn mép dưới của bộ đếm thời gian
     const timerBox = document.querySelector(".timer-box");
     minTop = (timerBox ? timerBox.getBoundingClientRect().bottom : 84) + 10;
   };
@@ -911,15 +904,13 @@ if (window.ResizeObserver) {
   document.addEventListener("mouseup", () => { drag = false; head.style.cursor = "grab"; });
 })();
 
-// Resize thủ công bằng tay cầm ở góc dưới-phải (không dùng CSS "resize" gốc vì
-// widget Desmos bên trong nuốt mất thao tác kéo ở đúng góc đó)
 (function () {
   const box = $("calc"), handle = $("calc-resize-handle");
   let resizing = false, startX = 0, startY = 0, startW = 0, startH = 0;
 
   handle.addEventListener("mousedown", (e) => {
     e.preventDefault();
-    e.stopPropagation(); // đừng để việc này bị hiểu nhầm thành kéo di chuyển khung
+
     resizing = true;
     const r = box.getBoundingClientRect();
     startX = e.clientX; startY = e.clientY;
@@ -942,14 +933,9 @@ if (window.ResizeObserver) {
   document.addEventListener("mouseup", () => { resizing = false; });
 })();
 
-/* ============ 10. BẮT BUỘC TOÀN MÀN HÌNH TRONG LÚC THI ============
- * Vào toàn màn hình ngay khi bắt đầu làm bài. Nếu học sinh thoát ra:
- * - Lần 1, 2: hiện cảnh báo, phải bấm nút để quay lại toàn màn hình mới làm tiếp được.
- * - Lần 3: khoá bài, buộc làm lại từ đầu (reload trang, phải đăng nhập lại từ cổng vào).
- */
 const MAX_FS_EXITS = 3;
 let fsExitCount = 0;
-let fsOverlayShowing = false; // tránh đếm trùng khi overlay đang hiện (do exitFullscreenMode() của chính mình gây ra)
+let fsOverlayShowing = false; 
 
 function requestFullscreenMode() {
   const el = document.documentElement;
@@ -964,8 +950,8 @@ function isFullscreenActive() {
   return Boolean(document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement);
 }
 function handleFullscreenChange() {
-  if (!state.attemptId || state.finished) return; // chỉ theo dõi trong lúc đang thi
-  if (isFullscreenActive() || fsOverlayShowing) return; // vừa vào lại toàn màn hình, hoặc overlay đang xử lý rồi thì bỏ qua
+  if (!state.attemptId || state.finished) return; 
+  if (isFullscreenActive() || fsOverlayShowing) return; 
 
   fsExitCount++;
   fsOverlayShowing = true;
@@ -974,7 +960,7 @@ function handleFullscreenChange() {
     $("fs-lockout").hidden = false;
   } else {
     $("fs-warning-text").textContent =
-      `Bạn đã thoát toàn màn hình lần ${fsExitCount}/${MAX_FS_EXITS}. Thoát quá ${MAX_FS_EXITS} lần, bài làm sẽ bị huỷ và phải làm lại từ đầu.`;
+      `You have exited the test screen for ${fsExitCount}/${MAX_FS_EXITS}. If you exit the test screen more than ${MAX_FS_EXITS} times, your test will be invalidated and you will have to work again.`;
     $("fs-warning").hidden = false;
   }
 }
