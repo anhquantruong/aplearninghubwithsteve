@@ -418,13 +418,16 @@ function computeStats() {
     const unit = q.unit || "Chưa phân loại";
     if (!byUnit[unit]) byUnit[unit] = { unit, correct: 0, wrong: 0 };
     const isCorrect = state.correctIndex[i] != null && state.answers[i] === state.correctIndex[i];
-    if (isCorrect) byUnit[unit].correct++;
+    if (isCorrect) { byUnit[unit].correct++; correct++; }
     else byUnit[unit].wrong++;
   });
   const units = Object.values(byUnit);
   const topCorrect = [...units].filter((u) => u.correct > 0).sort((a, b) => b.correct - a.correct).slice(0, 3);
   const topWrong = [...units].filter((u) => u.wrong > 0).sort((a, b) => b.wrong - a.wrong).slice(0, 3);
-  const correctCount = state.finalScore ?? correct;
+  // Nếu đã lấy được đáp án đúng về (get_attempt_review) thì dùng số đếm này cho khớp với danh sách bên dưới;
+  // chỉ dùng điểm từ server khi chưa có đáp án nào để đối chiếu.
+  const haveKey = state.correctIndex.some((c) => c != null);
+  const correctCount = haveKey ? correct : (state.finalScore ?? 0);
   // MỚI: thời gian đã làm bài, lấy từ state (đã lưu lại trong finish()), format mm:ss + số phút làm tròn
   const secondsUsed = state.secondsUsed;
   const minutesUsed = secondsUsed != null ? Math.round(secondsUsed / 60) : null;
