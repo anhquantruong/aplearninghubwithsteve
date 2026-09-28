@@ -173,7 +173,36 @@ function syncAnswer(i) {
   }).then(({ error }) => { if (error) console.warn("Lỗi lưu câu trả lời:", error.message); });
 }
 
-/* ============ 5. RENDER CÂU HỎI ============ */
+/* Bố cục chia đôi (ảnh | câu hỏi) có thanh kéo ở giữa */
+let splitPct = 50; // % chiều rộng cột ảnh, nhớ lại khi chuyển câu
+
+function mountSplit(leftHtml, rightHtml) {
+  $("stage").className = "stage split";
+  $("stage").innerHTML = `
+    <div class="pane left" style="width:${splitPct}%">${leftHtml}</div>
+    <div class="divider" id="split-divider" title="Kéo để đổi kích thước"></div>
+    <div class="pane right">${rightHtml}</div>`;
+
+  const stage = $("stage");
+  const left = stage.querySelector(".pane.left");
+  const divider = $("split-divider");
+
+  divider.onpointerdown = (e) => {
+    e.preventDefault();
+    divider.setPointerCapture(e.pointerId);
+    const move = (ev) => {
+      const r = stage.getBoundingClientRect();
+      splitPct = Math.min(75, Math.max(25, ((ev.clientX - r.left) / r.width) * 100));
+      left.style.width = splitPct + "%";
+    };
+    const up = () => {
+      divider.removeEventListener("pointermove", move);
+      divider.removeEventListener("pointerup", up);
+    };
+    divider.addEventListener("pointermove", move);
+    divider.addEventListener("pointerup", up);
+  };
+}
 function renderQuestion() {
   const QUESTIONS = state.QUESTIONS;
   const q = QUESTIONS[state.idx];
@@ -201,13 +230,13 @@ function renderQuestion() {
     </div>`;
 
   if (hasImage) {
-    $("stage").className = "stage split";
-    $("stage").innerHTML = `
-      <div class="pane left"><figure class="pane-inner stimulus">
+    mountSplit(
+      `<figure class="pane-inner stimulus">
         <img src="${q.image.src}" alt="${q.image.alt || ""}">
         ${q.image.caption ? `<figcaption>${q.image.caption}</figcaption>` : ""}
-      </figure></div>
-      <div class="pane right"><div class="pane-inner">${questionHtml}</div></div>`;
+      </figure>`,
+      `<div class="pane-inner">${questionHtml}</div>`
+    );
   } else {
     $("stage").className = "stage single";
     $("stage").innerHTML = `<div class="pane"><div class="pane-inner">${questionHtml}</div></div>`;
@@ -254,7 +283,7 @@ $("next-btn").onclick = () => {
 };
 
 /* ============ 6. NAVIGATOR ============ */
-const FLAG_SVG = `<svg class="navflag" width="12" height="13" viewBox="0 0 24 24"><path d="M6 3h12v18l-6-4-6 4z"/></svg>`;
+const FLAG_SVG = `<svg class="navflag" width="20" height="21" viewBox="0 0 24 24"><path d="M6 3h12v18l-6-4-6 4z"/></svg>`;
 function renderNav() {
   const unanswered = state.answers.filter((a) => a === null).length;
 
@@ -264,10 +293,10 @@ function renderNav() {
 
   const statusEl = $("nav-status");
   if (unanswered > 0) {
-    statusEl.textContent = `Còn ${unanswered} câu chưa hoàn thành.`;
+    statusEl.textContent = `There are ${unanswered} unfinished questions`;
     statusEl.classList.add("warn");
   } else {
-    statusEl.textContent = "Bạn đã hoàn thành tất cả câu hỏi.";
+    statusEl.textContent = "Congratulations! You have finished your exam!";
     statusEl.classList.remove("warn");
   }
 }
@@ -278,9 +307,6 @@ $("review-btn").onclick = () => {
   renderBigReview();
 };
 
-/* Trang review lớn — cùng logic/dữ liệu với popup overview nhỏ (đã trả lời/đánh dấu/đang ở câu nào),
-   nhưng hiển thị full trang, dùng khi bấm Next ở câu cuối hoặc mở "Review overall" giữa bài.
-   Click vào một ô câu hỏi sẽ quay lại đúng câu đó. Nút Nộp bài chỉ bật khi đã trả lời hết. */
 function renderBigReview() {
   const unanswered = state.answers.filter((a) => a === null).length;
 
@@ -307,11 +333,11 @@ function renderBigReview() {
   const statusEl = $("bigreview-status");
   const submitBtn = $("bigreview-submit");
   if (unanswered > 0) {
-    statusEl.textContent = `Còn ${unanswered} câu chưa hoàn thành — làm hết tất cả câu hỏi để nộp bài.`;
+    statusEl.textContent = `There are ${unanswered} questions left — finish them to submit!`;
     statusEl.classList.add("warn");
     submitBtn.disabled = true;
   } else {
-    statusEl.textContent = "Bạn đã hoàn thành tất cả câu hỏi, sẵn sàng nộp bài.";
+    statusEl.textContent = "You have finished all of the questions, ready to submit!";
     statusEl.classList.remove("warn");
     submitBtn.disabled = false;
   }
@@ -529,13 +555,13 @@ function renderReview(i) {
     </div>`;
 
   if (hasImage) {
-    $("stage").className = "stage split";
-    $("stage").innerHTML = `
-      <div class="pane left"><figure class="pane-inner stimulus">
+    mountSplit(
+      `<figure class="pane-inner stimulus">
         <img src="${q.image.src}" alt="${q.image.alt || ""}">
         ${q.image.caption ? `<figcaption>${q.image.caption}</figcaption>` : ""}
-      </figure></div>
-      <div class="pane right"><div class="pane-inner">${questionHtml}</div></div>`;
+      </figure>`,
+      `<div class="pane-inner">${questionHtml}</div>`
+    );
   } else {
     $("stage").className = "stage single";
     $("stage").innerHTML = `<div class="pane"><div class="pane-inner">${questionHtml}</div></div>`;

@@ -4,8 +4,7 @@
   --line: #d1d5db;
   --soft: #f1f2f3;
   --red: #b91c1c;
-  --rainbow: linear-gradient(90deg,#FF3B30,#FF6D00,#FFB800,#FFE600,#A8E10C,#39D353,#00C896,#00D9FF,#0099FF,#2455FF,#7B2CFF,#D629FF,#FF2DA6,#FF7043,#F4D35E,#06D6A0,#EF476F);
-}
+  --rainbow: linear-gradient(90deg, var(--blue), var(--blue));}
 * { box-sizing: border-box; margin: 0; }
 html, body { height: 100%; }
 /* Sửa lỗi chồng màn hình: .gate-screen và .app tự set display:flex nên thuộc tính
@@ -69,8 +68,11 @@ input { font: inherit; }
 .pane-inner { max-width: 48rem; margin: 0 auto; }
 .stage.single .pane { flex: 1; }
 .stage.single .pane-inner { max-width: 44rem; }
-.stage.split .pane { width: 50%; }
-.stage.split .pane.left { border-right: 4px solid #888; }
+.stage.split .pane.left { flex: none; }
+.stage.split .pane.right { flex: 1; min-width: 0; }
+.divider { flex: none; width: 10px; cursor: col-resize; background: #888; position: relative; touch-action: none; }
+.divider::after { content: ""; position: absolute; top: 50%; left: 50%; width: 4px; height: 40px; transform: translate(-50%, -50%); border-radius: 2px; background: #fff; opacity: .8; }
+.divider:hover, .divider:active { background: var(--blue); }
 .stimulus { font-family: "Noto Serif", serif; font-size: 17px; line-height: 1.6; }
 .stimulus img { display: block; width: auto; height: auto; max-width: 70%; max-height: 50vh; margin: 0 auto 12px; border: 1px solid var(--line); }
 .stimulus figcaption { font-size: 14px; color: #444; }
@@ -115,7 +117,7 @@ input { font: inherit; }
 .nav-grid button { aspect-ratio: 1; border: 1.5px dashed #888; border-radius: 4px; font-size: 13px; font-weight: 500; position: relative; }
 .nav-grid button.done { border-style: solid; background: var(--blue); border-color: var(--blue); color: #fff; }
 .nav-grid button.current { outline: 2px solid #000; outline-offset: 1px; }
-.navflag { position: absolute; top: -7px; right: -5px; fill: #b91c1c; pointer-events: none; }
+.navflag { position: absolute; top: -7px; right: -3px; fill: #b91c1c; pointer-events: none; }
 .nav-status { font-size: 13px; color: #16a34a; text-align: center; margin-bottom: 12px; }
 .nav-status.warn { color: #b91c1c; font-weight: 600; }
 
@@ -257,8 +259,9 @@ input { font: inherit; }
 
 @media (max-width: 800px) {
   .stage.split { flex-direction: column; }
-  .stage.split .pane { width: 100%; flex: 1; padding: 20px; }
-  .stage.split .pane.left { border-right: 0; border-bottom: 4px solid #888; }
+  .stage.split .pane, .stage.split .pane.left { width: 100% !important; flex: 1; padding: 20px; }
+  .stage.split .pane.left { border-bottom: 4px solid var(--blue); }
+  .divider { display: none; }
   .topbar, .footbar { padding: 0 12px; }
   .tool span { display: none; }
   .calc { width: 90vw !important; height: 70vh !important; right: 5vw; }
