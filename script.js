@@ -130,6 +130,10 @@ $("gate-form").onsubmit = async (e) => {
   const result = Array.isArray(data) ? data[0] : data;
   state.attemptId = result.attempt_id;
   state.examId = result.exam_id;
+  if (result.already_finished) {
+    await showSavedResult(result, email);
+    return;
+  }
   state.totalSeconds = result.total_seconds || 4200;
   state.secondsLeft = state.totalSeconds;
 
@@ -158,6 +162,40 @@ $("gate-form").onsubmit = async (e) => {
 };
 
 /* ============ 3. TẢI CÂU HỎI TỪ SUPABASE ============ */
+async function showSavedResult(result, email) {
+  state.finished = true;   // đặt trước để không bị tính là thoát toàn màn hình
+  state.view = "done";
+  state.secondsUsed = result.seconds_used;
+  exitFullscreenMode();
+  setTimeout(exitFullscreenMode, 300);
+
+  $("gate-screen").hidden = true;
+  $("app-root").hidden = false;
+  $("exam-subtitle").textContent = result.title;
+  document.querySelector(".footbar .brand").textContent = result.full_name;
+  setupWatermark(result.full_name, email);
+  document.querySelector(".topbar").style.display = "none";
+  document.querySelector(".footbar").style.display = "none";
+  $("calc").hidden = true;
+
+  if (!(await loadQuestions())) return;
+
+  const [ans, rev] = await Promise.all([
+    sb.rpc("get_attempt_answers", { p_attempt_id: state.attemptId }),
+    sb.rpc("get_attempt_review",  { p_attempt_id: state.attemptId })
+  ]);
+  (ans.data || []).forEach((r) => {
+    const i = state.QUESTIONS.findIndex((q) => q.id === r.question_id);
+    if (i >= 0) state.answers[i] = r.choice_index;
+  });
+  (rev.data || []).forEach((r) => {
+    const i = state.QUESTIONS.findIndex((q) => q.id === r.question_id);
+    if (i >= 0) state.correctIndex[i] = r.correct_choice_index;
+  });
+  state.finalScore = result.score;
+  state.finalTotal = result.total;
+  renderStats();
+}
 async function loadQuestions() {
   const { data: questions, error: qErr } = await sb
     .from("questions_public")
