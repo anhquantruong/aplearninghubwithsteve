@@ -881,7 +881,7 @@ function estimateHeroHtml(est) {
     <div class="est-item">
       <span class="est-k">FRQ raw score</span>
       <span class="est-v">${pending ? "Not graded yet"
-        : `${fmtNum(est.frq_raw_score)}${est.frq_max_raw != null ? ` / ${fmtNum(est.frq_max_raw)}` : ""}`}</span>
+        : `${fmtNum(est.frq_raw_total)}${est.frq_max_total != null ? ` / ${fmtNum(est.frq_max_total)}` : ""}`}</span>
     </div>` : "";
 
   const weightedItem = `
