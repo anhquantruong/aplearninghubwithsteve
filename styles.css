@@ -381,3 +381,30 @@ mark.hl.hl-flash { outline: 2px solid var(--blue); }
 
 .stats-summary { grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); }
 .est-pending { color: #888; font-size: 20px; }
+
+/* ===== Estimated AP Score: banner nổi bật trên cùng trang kết quả ===== */
+.est-hero {
+  display: flex; align-items: center; gap: 28px;
+  background: var(--blue); color: #fff;
+  border-radius: 12px; padding: 24px 28px; margin-bottom: 24px;
+  box-shadow: 0 4px 18px rgba(0, 24, 129, .25);
+}
+.est-main { flex: none; text-align: center; }
+.est-label { font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; opacity: .85; margin-bottom: 10px; }
+.est-score {
+  width: 96px; height: 96px; margin: 0 auto; border-radius: 50%;
+  background: #fff; color: var(--blue);
+  display: grid; place-items: center;
+  font-size: 52px; font-weight: 700; line-height: 1;
+}
+.est-score.pending { font-size: 40px; color: #888; }
+.est-details { flex: 1; display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 14px; }
+.est-item { background: rgba(255, 255, 255, .12); border-radius: 10px; padding: 12px 16px; }
+.est-k { display: block; font-size: 12px; opacity: .85; margin-bottom: 4px; }
+.est-v { font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.est-note { margin: -12px 0 24px; font-size: 13px; color: #666; text-align: center; }
+
+@media (max-width: 700px) {
+  .est-hero { flex-direction: column; text-align: center; }
+  .est-details { width: 100%; }
+}

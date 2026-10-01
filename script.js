@@ -868,18 +868,41 @@ async function fetchScoreEstimate() {
   return Array.isArray(data) ? data[0] : data;
 }
 
-function estimateBoxHtml(est) {
+function fmtNum(n) {
+  if (n == null) return "—";
+  return Number(n).toLocaleString("en-US", { maximumFractionDigits: 2 });
+}
+
+function estimateHeroHtml(est) {
   if (!est || !est.scoring_configured) return "";
-  if (est.frq_required && !est.frq_graded) {
-    return `<div class="stat-box">
-      <div class="stat-value est-pending">—</div>
-      <div class="stat-label">Estimated AP Score (FRQ not graded yet)</div>
+  const pending = est.frq_required && !est.frq_graded;
+
+  const frqItem = est.frq_required ? `
+    <div class="est-item">
+      <span class="est-k">FRQ raw score</span>
+      <span class="est-v">${pending ? "Not graded yet"
+        : `${fmtNum(est.frq_raw_score)}${est.frq_max_raw != null ? ` / ${fmtNum(est.frq_max_raw)}` : ""}`}</span>
+    </div>` : "";
+
+  const weightedItem = `
+    <div class="est-item">
+      <span class="est-k">Weighted score / Weighted total</span>
+      <span class="est-v">${pending ? "—"
+        : `${fmtNum(est.weighted_score)} / ${fmtNum(est.weighted_total)}`}</span>
     </div>`;
-  }
-  return `<div class="stat-box">
-    <div class="stat-value">${est.ap_score ?? "—"}</div>
-    <div class="stat-label">Estimated AP Score</div>
-  </div>`;
+
+  return `
+    <div class="est-hero">
+      <div class="est-main">
+        <div class="est-label">Estimated AP Score</div>
+        <div class="est-score ${pending ? "pending" : ""}">${pending ? "—" : (est.ap_score ?? "—")}</div>
+      </div>
+      <div class="est-details">
+        ${frqItem}
+        ${weightedItem}
+      </div>
+    </div>
+    ${pending ? `<p class="est-note">Your FRQ has not been graded yet. Your estimated AP score will appear once your teacher enters it.</p>` : ""}`;
 }
 
 async function renderStats() {
@@ -889,9 +912,9 @@ async function renderStats() {
   $("stage").className = "stage single";
   $("stage").innerHTML = `
     <div class="stats-page">
+      ${estimateHeroHtml(estimate)}
       <div class="stats-card">
         <div class="stats-summary">
-          ${estimateBoxHtml(estimate)}
           <div class="stat-box">
             <div class="stat-value">${s.correct} / ${s.total}</div>
             <div class="stat-label">No. of Correct Questions</div>
