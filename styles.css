@@ -378,3 +378,6 @@ mark.hl.hl-flash { outline: 2px solid var(--blue); }
 }
 .ctext-table th { background: var(--soft); font-weight: 700; }
 .choice.gone .ctext-table { opacity: .45; text-decoration: line-through; }
+
+.stats-summary { grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); }
+.est-pending { color: #888; font-size: 20px; }

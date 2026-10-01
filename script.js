@@ -18,6 +18,7 @@ function getAccessCodeFromUrl() {
   return parts[parts.length - 1] || "";
 }
 const ACCESS_CODE = getAccessCodeFromUrl();
+
 /* ============ 0B. CHẶN ĐIỆN THOẠI: chỉ cho iPad / laptop / desktop ============
  * Heuristic: dựa vào user agent (điện thoại luôn có "Mobi" hoặc tên hệ điều hành
  * di động cụ thể) kết hợp bề rộng màn hình, vì iPad hiện đại giả UA giống Mac.
@@ -37,11 +38,17 @@ function isPhoneDevice() {
   return smallScreen && /Android/.test(ua);
 }
 
+function blockPhone() {
+  $("gate-screen").hidden = true;
+  $("device-block").hidden = false;
+}
 if (isPhoneDevice()) {
-  document.addEventListener("DOMContentLoaded", () => {
-    $("gate-screen").hidden = true;
-    $("device-block").hidden = false;
-  });
+  // Chạy ngay nếu DOM đã sẵn sàng, nếu chưa thì chờ DOMContentLoaded
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", blockPhone);
+  } else {
+    blockPhone();
+  }
 }
 
 /* ============ 1. TRẠNG THÁI ============ */
@@ -56,6 +63,7 @@ const state = {
   crossed: [],             // các đáp án bị gạch, mỗi câu 1 Set
   elimMode: false,         // bật/tắt hiện nút tròn gạch đáp án (nút ABC)
   secondsLeft: 0,
+  timerHidden: false,
   finished: false,
   correctIndex: [],        // đáp án đúng từng câu — chỉ có SAU khi nộp bài (get_attempt_review)
   finalScore: null,
@@ -63,9 +71,9 @@ const state = {
   secondsUsed: null,       // thời gian đã làm bài, dùng ở trang thống kê
 
   view: "gate",            // màn hình hiện tại: gate | question | review | done
-  highlights: [],          // MỚI: mỗi câu 1 mảng [{id, target, start, end, color, note}]
-  hlMode: false,           // MỚI: đang bật Highlights & Notes
-  activeHlId: null,        // MỚI: highlight vừa tạo note, để tự focus vào ô note
+  highlights: [],          // mỗi câu 1 mảng [{id, target, start, end, color, note}]
+  hlMode: false,           // đang bật Highlights & Notes
+  activeHlId: null,        // highlight vừa tạo note, để tự focus vào ô note
   lastColor: "yellow"
 };
 
@@ -92,8 +100,7 @@ $("gate-form").onsubmit = async (e) => {
   e.preventDefault();
 
   if (isPhoneDevice()) {
-    $("gate-screen").hidden = true;
-    $("device-block").hidden = false;
+    blockPhone();
     return;
   }
   const email = $("gate-email").value.trim();
@@ -137,7 +144,9 @@ $("gate-form").onsubmit = async (e) => {
   document.documentElement.scrollTop = 0;
   document.body.scrollTop = 0;
 
-  await loadQuestions();
+  const ok = await loadQuestions();
+  if (!ok) return; // tải câu hỏi lỗi: dừng lại, thông báo lỗi đã hiện trong #stage
+
   startTimer();
   renderQuestion();
 
@@ -150,7 +159,6 @@ $("gate-form").onsubmit = async (e) => {
 
 /* ============ 3. TẢI CÂU HỎI TỪ SUPABASE ============ */
 async function loadQuestions() {
-  console.log("DEBUG state.examId =", state.examId);
   const { data: questions, error: qErr } = await sb
     .from("questions_public")
     .select("*")
@@ -158,12 +166,12 @@ async function loadQuestions() {
     .order("question_number");
   if (qErr) {
     console.error("Lỗi tải câu hỏi:", qErr);
-    $("stage").innerHTML = `<div class="loading">Lỗi tải câu hỏi: ${qErr.message}</div>`;
-    return;
+    $("stage").innerHTML = `<div class="loading">Lỗi tải câu hỏi: ${escapeHtml(qErr.message)}</div>`;
+    return false;
   }
-  if (!questions.length) {
+  if (!questions || !questions.length) {
     $("stage").innerHTML = `<div class="loading">Đề này chưa có câu hỏi nào.</div>`;
-    return;
+    return false;
   }
 
   const { data: choices, error: cErr } = await sb
@@ -172,8 +180,8 @@ async function loadQuestions() {
     .in("question_id", questions.map((q) => q.id))
     .order("choice_index");
   if (cErr) {
-    $("stage").innerHTML = `<div class="loading">Lỗi tải đáp án: ${cErr.message}</div>`;
-    return;
+    $("stage").innerHTML = `<div class="loading">Lỗi tải đáp án: ${escapeHtml(cErr.message)}</div>`;
+    return false;
   }
 
   state.QUESTIONS = questions.map((q) => ({
@@ -188,6 +196,7 @@ async function loadQuestions() {
   state.crossed = state.QUESTIONS.map(() => new Set());
   state.correctIndex = state.QUESTIONS.map(() => null);
   state.highlights = state.QUESTIONS.map(() => []);
+  return true;
 }
 
 /* ============ 4. ĐỒNG BỘ CÂU TRẢ LỜI LÊN SERVER (không chặn UI) ============ */
@@ -267,7 +276,8 @@ function mountSplit(leftHtml, rightHtml) {
   };
 }
 
-let popCtx = null; 
+/* ============ HIGHLIGHTS & NOTES ============ */
+let popCtx = null;
 
 function newHlId() {
   return "h" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
@@ -727,12 +737,12 @@ function stripHtml(html) {
 }
 
 async function finish() {
-  if (state.finished) return; 
+  if (state.finished) return;
   state.finished = true;
   state.view = "done";
   hideHlPopover();
-  clearInterval(tick); 
-  exitFullscreenMode(); 
+  clearInterval(tick);
+  exitFullscreenMode();
   $("nav-popup").hidden = true;
   $("calc").hidden = true;
   document.querySelector(".topbar").style.display = "none";
@@ -749,8 +759,9 @@ async function finish() {
   });
   const result = Array.isArray(data) ? data[0] : data;
 
-  if (error) {
-    $("stage").innerHTML = `<div class="loading">Không chấm được điểm: ${error.message}</div>`;
+  if (error || !result) {
+    const msg = error ? error.message : "Không có dữ liệu trả về";
+    $("stage").innerHTML = `<div class="loading">Không chấm được điểm: ${escapeHtml(msg)}</div>`;
     return;
   }
 
@@ -813,15 +824,36 @@ function computeStats() {
     minutesUsed
   };
 }
+async function fetchScoreEstimate() {
+  const { data, error } = await sb.rpc("get_score_estimate", { p_attempt_id: state.attemptId });
+  if (error) { console.warn("Lỗi lấy điểm ước tính:", error.message); return null; }
+  return Array.isArray(data) ? data[0] : data;
+}
 
-function renderStats() {
+function estimateBoxHtml(est) {
+  if (!est || !est.scoring_configured) return "";
+  if (est.frq_required && !est.frq_graded) {
+    return `<div class="stat-box">
+      <div class="stat-value est-pending">—</div>
+      <div class="stat-label">Estimated AP Score (FRQ not graded yet)</div>
+    </div>`;
+  }
+  return `<div class="stat-box">
+    <div class="stat-value">${est.ap_score ?? "—"}</div>
+    <div class="stat-label">Estimated AP Score</div>
+  </div>`;
+}
+
+async function renderStats() {
   const s = computeStats();
+  const estimate = await fetchScoreEstimate();
 
   $("stage").className = "stage single";
   $("stage").innerHTML = `
     <div class="stats-page">
       <div class="stats-card">
         <div class="stats-summary">
+          ${estimateBoxHtml(estimate)}
           <div class="stat-box">
             <div class="stat-value">${s.correct} / ${s.total}</div>
             <div class="stat-label">No. of Correct Questions</div>
@@ -838,11 +870,11 @@ function renderStats() {
         <div class="stats-units">
           <div class="stats-unit-col">
             <h4></h4>
-            <ul>${s.topCorrect.length ? s.topCorrect.map((u) => `<li><span class="dot ok"></span>${u.unit} <b>${u.correct}</b> câu đúng</li>`).join("") : "<li>Chưa có dữ liệu</li>"}</ul>
+            <ul>${s.topCorrect.length ? s.topCorrect.map((u) => `<li><span class="dot ok"></span>${escapeHtml(u.unit)} <b>${u.correct}</b> câu đúng</li>`).join("") : "<li>Chưa có dữ liệu</li>"}</ul>
           </div>
           <div class="stats-unit-col">
             <h4></h4>
-            <ul>${s.topWrong.length ? s.topWrong.map((u) => `<li><span class="dot bad"></span>${u.unit} <b>${u.wrong}</b> câu sai</li>`).join("") : "<li>Chưa có dữ liệu</li>"}</ul>
+            <ul>${s.topWrong.length ? s.topWrong.map((u) => `<li><span class="dot bad"></span>${escapeHtml(u.unit)} <b>${u.wrong}</b> câu sai</li>`).join("") : "<li>Chưa có dữ liệu</li>"}</ul>
           </div>
         </div>
       </div>
@@ -853,7 +885,7 @@ function renderStats() {
           const correctIdx = state.correctIndex[i];
           const isCorrect = correctIdx != null && chosen === correctIdx;
           const rawText = stripHtml(q.text);
-          const snippet = rawText.slice(0, 20) + (rawText.length > 20 ? "…" : "");
+          const snippet = escapeHtml(rawText.slice(0, 20) + (rawText.length > 20 ? "…" : ""));
           return `
           <div class="stats-row ${isCorrect ? "ok" : "bad"}">
             <span class="srow-num">${i + 1}</span>
@@ -916,9 +948,10 @@ function renderReview(i) {
   $("review-back-btn").onclick = () => renderStats();
 }
 
+/* ============ MÁY TÍNH DESMOS ============ */
 let desmosCalc = null;
 function ensureDesmosCalculator() {
-  if (desmosCalc) return; 
+  if (desmosCalc) return;
   const elt = $("calc-desmos");
   if (elt && window.Desmos) {
     desmosCalc = Desmos.FourFunctionCalculator(elt);
@@ -989,25 +1022,36 @@ if (window.ResizeObserver) {
   document.addEventListener("mouseup", () => { resizing = false; });
 })();
 
+/* ============ TOÀN MÀN HÌNH ============ */
 const MAX_FS_EXITS = 3;
 let fsExitCount = 0;
-let fsOverlayShowing = false; 
+let fsOverlayShowing = false;
 
+// webkitRequestFullscreen / msRequestFullscreen (Safari, iPad) không trả về Promise,
+// nên phải kiểm tra trước khi gọi .catch để tránh TypeError.
 function requestFullscreenMode() {
   const el = document.documentElement;
   const req = el.requestFullscreen || el.webkitRequestFullscreen || el.msRequestFullscreen;
-  if (req) req.call(el).catch(() => {});
+  if (!req) return;
+  try {
+    const p = req.call(el);
+    if (p && typeof p.catch === "function") p.catch(() => {});
+  } catch (_) { /* trình duyệt không cho phép */ }
 }
 function exitFullscreenMode() {
   const exit = document.exitFullscreen || document.webkitExitFullscreen || document.msExitFullscreen;
-  if (isFullscreenActive() && exit) exit.call(document).catch(() => {});
+  if (!isFullscreenActive() || !exit) return;
+  try {
+    const p = exit.call(document);
+    if (p && typeof p.catch === "function") p.catch(() => {});
+  } catch (_) { /* bỏ qua */ }
 }
 function isFullscreenActive() {
   return Boolean(document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement);
 }
 function handleFullscreenChange() {
-  if (!state.attemptId || state.finished) return; 
-  if (isFullscreenActive() || fsOverlayShowing) return; 
+  if (!state.attemptId || state.finished) return;
+  if (isFullscreenActive() || fsOverlayShowing) return;
 
   fsExitCount++;
   fsOverlayShowing = true;
