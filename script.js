@@ -253,7 +253,12 @@ async function loadQuestions() {
   mods.forEach((m) => {
     const qs = (m.question_ids || []).map((id) => byId.get(id)).filter(Boolean);
     if (!qs.length) return; // module FRQ (giáo viên chấm tay) không có câu trên web
-    const mi = state.modules.push({ id: m.id, title: m.title || "", calculator: m.calculator || "none" }) - 1;
+    const mi = state.modules.push({
+      id: m.id,
+      title: m.title || "",
+      calculator: m.calculator || "none",
+      directions_html: m.directions_html || ""   // THÊM dòng này
+    }) - 1;
     qs.forEach((q) => { used.add(q.id); ordered.push({ q, mi }); });
   });
   const rest = questions.filter((q) => !used.has(q.id));
