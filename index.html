@@ -33,6 +33,13 @@
     <p>This test can only be taken on an iPad or a laptop/desktop computer. Please switch devices to continue.</p>
   </div>
 </div>
+<div id="directions-screen" class="directions-screen" hidden>
+  <div class="directions-box">
+    <h1 id="directions-title">Section Directions</h1>
+    <div id="directions-body" class="directions-body"></div>
+    <button id="directions-resume-btn" class="btn wide">Resume Testing</button>
+  </div>
+</div>
 <div id="app-root" class="app" hidden>
 <header class="topbar">
 <div class="title">
@@ -69,10 +76,15 @@
 </div>
 
 <div id="nav-popup" class="popup" hidden>
-<div class="popup-head"><strong>Questions</strong><button id="nav-close" class="x">×</button></div>
+<div class="popup-head"><strong id="nav-popup-title">Questions</strong><button id="nav-close" class="x">×</button></div>
+<div class="popup-tabs">
+  <button class="popup-tab active" data-tab="current"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="9" r="2.5"/><path d="M12 21s7-6.5 7-12a7 7 0 1 0-14 0c0 5.5 7 12 7 12z" fill="none" stroke="currentColor" stroke-width="2"/></svg> Current</button>
+  <button class="popup-tab" data-tab="unanswered"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="3" width="18" height="18" rx="2"/></svg> Unanswered</button>
+  <button class="popup-tab" data-tab="review"><svg width="12" height="14" viewBox="0 0 24 24"><path d="M6 3h12v18l-6-4-6 4z"/></svg> For Review</button>
+</div>
 <div id="nav-grid" class="nav-grid"></div>
 <p id="nav-status" class="nav-status"></p>
-<button id="review-btn" class="btn wide">OVERVIEW</button>
+<button id="review-btn" class="btn wide">Go to Review Page</button>
 </div>
 
 <!-- Calculator: Desmos Four-Function Calculator -->
@@ -106,6 +118,5 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://www.desmos.com/api/v1.12/calculator.js?apiKey=b309a22c7a96470da8216ea5cdb49fb8"></script>
 <script src="script.js"></script>
-<script src="persist.js"></script>
 </body>
 </html>

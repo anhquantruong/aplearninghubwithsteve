@@ -6,6 +6,29 @@ const sb = supabase.createClient(SUPABASE_URL, PUBLISHABLE_KEY);
 const $ = (id) => document.getElementById(id);
 const LETTERS = ["A", "B", "C", "D", "E", "F"];
 
+/* Tên hiển thị của từng loại máy tính (cấu hình ở module trong trang admin) */
+const CALC_LABEL = {
+  none: "No calculator",
+  four: "Four-function calculator",
+  scientific: "Scientific calculator",
+  graphing: "Graphing calculator"
+};
+
+/* CSS nhỏ cho phần module (không cần sửa file css) */
+(function injectModuleStyles() {
+  const s = document.createElement("style");
+  s.textContent = `
+    .module-tag{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:#3b4a8f;background:#eef1fc;border:1px solid #d6dcf7;border-radius:999px;padding:3px 10px;margin:0 0 12px}
+    .module-tag.nocalc{background:#fdf2f2;border-color:#f3cccc;color:#8a1f1f}
+    .nav-mod-title{grid-column:1/-1;flex:0 0 100%;width:100%;font-size:12px;font-weight:700;color:#555;margin:8px 0 2px;text-align:left}
+    .mod-breakdown{margin:16px 0}
+    .mod-breakdown table{width:100%;border-collapse:collapse;font-size:14px;background:#fff;border:1px solid #d1d5db;border-radius:8px;overflow:hidden}
+    .mod-breakdown th,.mod-breakdown td{padding:8px 12px;text-align:left;border-bottom:1px solid #eee}
+    .mod-breakdown th{background:#f4f5f7;font-size:12px;text-transform:uppercase;color:#666}
+  `;
+  document.head.appendChild(s);
+})();
+
 /* ============ 0. XÁC ĐỊNH ĐỀ NÀO TỪ URL ============
  * Link dạng .../gwenclassroom/apmacro/947393/  -> lấy "947393" (đoạn cuối cùng)
  * Test local dễ hơn bằng query string: index.html?code=947393
@@ -19,21 +42,16 @@ function getAccessCodeFromUrl() {
 }
 const ACCESS_CODE = getAccessCodeFromUrl();
 
-/* ============ 0B. CHẶN ĐIỆN THOẠI: chỉ cho iPad / laptop / desktop ============
- * Heuristic: dựa vào user agent (điện thoại luôn có "Mobi" hoặc tên hệ điều hành
- * di động cụ thể) kết hợp bề rộng màn hình, vì iPad hiện đại giả UA giống Mac.
- */
+/* ============ 0B. CHẶN ĐIỆN THOẠI: chỉ cho iPad / laptop / desktop ============ */
 function isPhoneDevice() {
   const ua = navigator.userAgent || "";
   const isIpad = /iPad/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
-  if (isIpad) return false; // iPad (kể cả giả UA Mac) luôn được phép
+  if (isIpad) return false;
 
   const isAndroidPhone = /Android/.test(ua) && /Mobile/.test(ua);
   const isOtherMobile = /iPhone|iPod|Windows Phone|BlackBerry|Opera Mini|IEMobile/.test(ua);
   if (isAndroidPhone || isOtherMobile) return true;
 
-  // Android tablet (không có "Mobile" trong UA) được coi như laptop -> cho phép
-  // Dự phòng thêm: màn hình quá nhỏ (điện thoại) dù UA không rõ ràng
   const smallScreen = Math.min(window.innerWidth, window.innerHeight) < 500;
   return smallScreen && /Android/.test(ua);
 }
@@ -43,7 +61,6 @@ function blockPhone() {
   $("device-block").hidden = false;
 }
 if (isPhoneDevice()) {
-  // Chạy ngay nếu DOM đã sẵn sàng, nếu chưa thì chờ DOMContentLoaded
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", blockPhone);
   } else {
@@ -56,24 +73,25 @@ const state = {
   attemptId: null,
   examId: null,
   totalSeconds: 70 * 60,
-  QUESTIONS: [],           // nạp từ Supabase sau khi qua cổng vào
+  modules: [],             // [{id, title, calculator}] — chỉ gồm module có câu hỏi trắc nghiệm
+  QUESTIONS: [],           // đã xếp theo module; mỗi câu có q.mod = chỉ số module trong state.modules
   idx: 0,
   answers: [],
   marked: [],
-  crossed: [],             // các đáp án bị gạch, mỗi câu 1 Set
-  elimMode: false,         // bật/tắt hiện nút tròn gạch đáp án (nút ABC)
+  crossed: [],
+  elimMode: false,
   secondsLeft: 0,
   timerHidden: false,
   finished: false,
-  correctIndex: [],        // đáp án đúng từng câu — chỉ có SAU khi nộp bài (get_attempt_review)
+  correctIndex: [],
   finalScore: null,
   finalTotal: null,
-  secondsUsed: null,       // thời gian đã làm bài, dùng ở trang thống kê
+  secondsUsed: null,
 
-  view: "gate",            // màn hình hiện tại: gate | question | review | done
-  highlights: [],          // mỗi câu 1 mảng [{id, target, start, end, color, note}]
-  hlMode: false,           // đang bật Highlights & Notes
-  activeHlId: null,        // highlight vừa tạo note, để tự focus vào ô note
+  view: "gate",            // gate | question | review | done
+  highlights: [],
+  hlMode: false,
+  activeHlId: null,
   lastColor: "yellow"
 };
 
@@ -107,7 +125,7 @@ $("gate-form").onsubmit = async (e) => {
   const password = $("gate-password").value;
   if (!email || !password) return;
 
-  requestFullscreenMode(); // gọi ngay trong lúc xử lý click (bắt buộc phải đồng bộ, trước mọi await)
+  requestFullscreenMode(); // phải gọi đồng bộ, trước mọi await
 
   $("gate-submit").disabled = true;
   $("gate-error").textContent = "Đang kiểm tra...";
@@ -143,27 +161,25 @@ $("gate-form").onsubmit = async (e) => {
   document.querySelector(".footbar .brand").textContent = result.full_name;
   setupWatermark(result.full_name, email);
 
-  // Đảm bảo trang cuộn lên đầu để thấy ngay phần thi, không bị kẹt ở vị trí cuộn cũ của cổng vào
   window.scrollTo(0, 0);
   document.documentElement.scrollTop = 0;
   document.body.scrollTop = 0;
 
   const ok = await loadQuestions();
-  if (!ok) return; // tải câu hỏi lỗi: dừng lại, thông báo lỗi đã hiện trong #stage
+  if (!ok) return;
 
   startTimer();
   renderQuestion();
 
-  // Cuộn lại lần nữa sau khi câu hỏi đã render (phòng khi layout thay đổi chiều cao)
   requestAnimationFrame(() => {
     window.scrollTo(0, 0);
     $("app-root").scrollIntoView({ block: "start" });
   });
 };
 
-/* ============ 3. TẢI CÂU HỎI TỪ SUPABASE ============ */
+/* ============ 3. TẢI CÂU HỎI + MODULE TỪ SUPABASE ============ */
 async function showSavedResult(result, email) {
-  state.finished = true;   // đặt trước để không bị tính là thoát toàn màn hình
+  state.finished = true;
   state.view = "done";
   state.secondsUsed = result.seconds_used;
   exitFullscreenMode();
@@ -182,7 +198,7 @@ async function showSavedResult(result, email) {
 
   const [ans, rev] = await Promise.all([
     sb.rpc("get_attempt_answers", { p_attempt_id: state.attemptId }),
-    sb.rpc("get_attempt_review",  { p_attempt_id: state.attemptId })
+    sb.rpc("get_attempt_review", { p_attempt_id: state.attemptId })
   ]);
   (ans.data || []).forEach((r) => {
     const i = state.QUESTIONS.findIndex((q) => q.id === r.question_id);
@@ -196,6 +212,7 @@ async function showSavedResult(result, email) {
   state.finalTotal = result.total;
   renderStats();
 }
+
 async function loadQuestions() {
   const { data: questions, error: qErr } = await sb
     .from("questions_public")
@@ -222,10 +239,34 @@ async function loadQuestions() {
     return false;
   }
 
-  state.QUESTIONS = questions.map((q) => ({
+  // Cấu trúc module (nếu chưa chạy migration thì dùng 1 module mặc định như bản cũ)
+  let mods = [];
+  const { data: mdata, error: mErr } = await sb.rpc("get_exam_modules", { p_exam_id: state.examId });
+  if (mErr) console.warn("Không lấy được module, dùng cấu trúc mặc định:", mErr.message);
+  else if (Array.isArray(mdata)) mods = mdata;
+
+  const byId = new Map(questions.map((q) => [q.id, q]));
+  const used = new Set();
+  const ordered = [];
+  state.modules = [];
+
+  mods.forEach((m) => {
+    const qs = (m.question_ids || []).map((id) => byId.get(id)).filter(Boolean);
+    if (!qs.length) return; // module FRQ (giáo viên chấm tay) không có câu trên web
+    const mi = state.modules.push({ id: m.id, title: m.title || "", calculator: m.calculator || "none" }) - 1;
+    qs.forEach((q) => { used.add(q.id); ordered.push({ q, mi }); });
+  });
+  const rest = questions.filter((q) => !used.has(q.id));
+  if (rest.length) {
+    const mi = state.modules.push({ id: null, title: "", calculator: "four" }) - 1;
+    rest.forEach((q) => ordered.push({ q, mi }));
+  }
+
+  state.QUESTIONS = ordered.map(({ q, mi }) => ({
     id: q.id,
+    mod: mi,
     text: q.text,
-    unit: q.unit || q.topic || null, // dùng cho trang thống kê (top unit đúng/sai nhiều nhất)
+    unit: q.unit || q.topic || null,
     image: q.image_url ? { src: q.image_url, alt: q.image_alt, caption: q.image_caption } : null,
     choices: choices.filter((c) => c.question_id === q.id).map((c) => c.text)
   }));
@@ -237,13 +278,12 @@ async function loadQuestions() {
   return true;
 }
 
-/* ============ 4. ĐỒNG BỘ CÂU TRẢ LỜI LÊN SERVER (không chặn UI) ============ */
+/* ============ 4. TIỆN ÍCH + ĐỒNG BỘ CÂU TRẢ LỜI ============ */
 function escapeHtml(s) {
   const div = document.createElement("div");
   div.textContent = s;
   return div.innerHTML;
 }
-// ===== Tự nhận diện đáp án dạng bảng: "Label1: Value1 / Label2: Value2 / ..." =====
 function parseChoiceTable(text) {
   if (!text || !text.includes("/") || !text.includes(":")) return null;
   const parts = text.split("/").map((s) => s.trim()).filter(Boolean);
@@ -283,8 +323,14 @@ function syncAnswer(i) {
   }).then(({ error }) => { if (error) console.warn("Lỗi lưu câu trả lời:", error.message); });
 }
 
+function moduleTagHtml(mod) {
+  if (!mod || !mod.title) return "";
+  const none = mod.calculator === "none";
+  return `<div class="module-tag ${none ? "nocalc" : ""}">${escapeHtml(mod.title)} · ${CALC_LABEL[mod.calculator] || ""}</div>`;
+}
+
 /* ============ 5A. BỐ CỤC CHIA ĐÔI (ảnh | câu hỏi) CÓ THANH KÉO ============ */
-let splitPct = 50; // % chiều rộng cột ảnh, nhớ lại khi chuyển câu
+let splitPct = 50;
 
 function mountSplit(leftHtml, rightHtml) {
   $("stage").className = "stage split";
@@ -327,7 +373,6 @@ function removeHighlight(i, id) {
   state.highlights[i] = (state.highlights[i] || []).filter((h) => h.id !== id);
 }
 
-// Thêm highlight mới; phần nào đè lên highlight cũ thì cắt highlight cũ lại
 function addHighlight(i, h) {
   const out = [];
   (state.highlights[i] || []).forEach((e) => {
@@ -344,7 +389,6 @@ function addHighlight(i, h) {
   return id;
 }
 
-// Đếm số ký tự từ đầu khối chữ tới một điểm trong DOM
 function offsetIn(container, node, off) {
   const r = document.createRange();
   r.selectNodeContents(container);
@@ -352,7 +396,6 @@ function offsetIn(container, node, off) {
   return r.toString().length;
 }
 
-// Bọc đoạn chữ [start, end) trong khối bằng thẻ <mark> (xử lý được cả khi chữ nằm trong nhiều thẻ con)
 function wrapRange(container, start, end, h) {
   const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT);
   const nodes = [];
@@ -383,7 +426,6 @@ function applyHighlightsToStage() {
   });
 }
 
-/* ----- Khung nhỏ chọn màu / Note / Remove ----- */
 function ensureHlPopover() {
   let pop = $("hl-pop");
   if (pop) return pop;
@@ -398,7 +440,7 @@ function ensureHlPopover() {
     <span class="hl-sep"></span>
     <button class="hl-act" data-act="note">Note</button>
     <button class="hl-act hl-remove" data-act="remove" hidden>Remove</button>`;
-  pop.onmousedown = (e) => e.preventDefault(); // giữ nguyên vùng đang bôi
+  pop.onmousedown = (e) => e.preventDefault();
   pop.onclick = onPopClick;
   document.body.appendChild(pop);
   return pop;
@@ -459,7 +501,6 @@ function onPopClick(e) {
   renderQuestion();
 }
 
-// Sau khi thả chuột: nếu đang bôi chữ trong đề → hiện khung nhỏ; nếu bấm vào chữ đã highlight → hiện khung sửa
 function onPointerUp(e) {
   if (!state.hlMode || state.view !== "question" || state.finished) return;
   if (e.target.closest && e.target.closest("#hl-pop, .notes-panel")) return;
@@ -493,7 +534,7 @@ document.addEventListener("pointerdown", (e) => {
   if (!e.target.closest || !e.target.closest("#hl-pop")) hideHlPopover();
 });
 
-// Vẫn chặn copy chữ đề (chống chép đề), trừ khi đang gõ trong ô note
+// Chặn copy chữ đề (chống chép đề), trừ khi đang gõ trong ô note
 document.addEventListener("copy", (e) => {
   if (document.activeElement && document.activeElement.tagName === "TEXTAREA") return;
   e.preventDefault();
@@ -506,7 +547,6 @@ function flashMarks(id) {
   });
 }
 
-/* ----- Cột Notes bên phải ----- */
 function renderNotesPanel() {
   const stage = $("stage");
   stage.classList.remove("with-notes");
@@ -529,7 +569,7 @@ function renderNotesPanel() {
       </div>`;
   }).join("");
 
-  if (!cards) return; // chưa có note nào thì không hiện panel
+  if (!cards) return;
   const panel = document.createElement("aside");
   panel.className = "notes-panel";
   panel.innerHTML = `<div class="notes-head">Notes</div>${cards}`;
@@ -550,7 +590,6 @@ function renderNotesPanel() {
   }
 }
 
-/* ----- Nút "Highlights & Notes" trên thanh trên cùng (tự thêm bằng JS, không cần sửa HTML) ----- */
 (function injectHlButton() {
   const tools = document.querySelector(".tools");
   if (!tools || $("hl-btn")) return;
@@ -567,6 +606,64 @@ function renderNotesPanel() {
   };
 })();
 
+/* ============ MÁY TÍNH THEO MODULE (Desmos) ============ */
+let desmosCalc = null;
+let desmosKind = null;
+
+// Loại máy tính cho câu hỏi đang xem; ngoài màn hình làm bài thì không có máy tính
+function currentCalcKind() {
+  if (state.view !== "question" || state.finished) return "none";
+  const q = state.QUESTIONS[state.idx];
+  const mod = q && state.modules[q.mod];
+  return (mod && mod.calculator) || "none";
+}
+
+function ensureDesmosCalculator(kind) {
+  if (desmosCalc && desmosKind === kind) return;
+  if (desmosCalc) { try { desmosCalc.destroy(); } catch (_) {} desmosCalc = null; desmosKind = null; }
+  const elt = $("calc-desmos");
+  if (!elt || !window.Desmos) return;
+  if (kind === "graphing") desmosCalc = Desmos.GraphingCalculator(elt);
+  else if (kind === "scientific") desmosCalc = Desmos.ScientificCalculator(elt);
+  else desmosCalc = Desmos.FourFunctionCalculator(elt);
+  desmosKind = kind;
+
+  // Graphing cần khung to hơn máy tính bỏ túi
+  if (kind === "graphing") {
+    const box = $("calc");
+    if (box.getBoundingClientRect().width < 420) box.style.width = "480px";
+    if (box.getBoundingClientRect().height < 480) box.style.height = "520px";
+  }
+  setTimeout(() => { if (desmosCalc) desmosCalc.resize(); }, 0);
+}
+
+// Gọi mỗi lần đổi câu / đổi màn hình: ẩn hiện nút máy tính và đổi loại máy tính cho đúng module
+function syncCalculatorUi() {
+  const kind = currentCalcKind();
+  const btn = $("calc-btn");
+  if (btn) {
+    btn.style.display = kind === "none" ? "none" : "";
+    btn.title = CALC_LABEL[kind] || "";
+  }
+  if (kind === "none") { $("calc").hidden = true; return; }
+  if (!$("calc").hidden) ensureDesmosCalculator(kind);
+}
+
+$("calc-btn").onclick = () => {
+  const kind = currentCalcKind();
+  if (kind === "none") return;
+  $("calc").hidden = !$("calc").hidden;
+  if (!$("calc").hidden) ensureDesmosCalculator(kind);
+};
+$("calc-close").onclick = () => ($("calc").hidden = true);
+
+if (window.ResizeObserver) {
+  const calcResizeObserver = new ResizeObserver(() => {
+    if (desmosCalc) desmosCalc.resize();
+  });
+  calcResizeObserver.observe($("calc"));
+}
+
 /* ============ 5. RENDER CÂU HỎI ============ */
 function renderQuestion() {
   state.view = "question";
@@ -575,6 +672,13 @@ function renderQuestion() {
   const q = QUESTIONS[state.idx];
   const i = state.idx;
   const hasImage = Boolean(q.image);
+  const mod = state.modules[q.mod];
+    // Vào module mới lần đầu & module có directions -> chặn hiện câu hỏi, show màn Directions trước
+  if (mod && mod.directions_html && !seenDirections.has(q.mod)) {
+    seenDirections.add(q.mod);
+    showDirectionsScreen(mod, state.idx === 0);
+    return;
+  }
 
   const questionHtml = `
     <div class="qhead">
@@ -587,6 +691,8 @@ function renderQuestion() {
         <button class="elim ${state.elimMode ? "on" : ""}" id="elim-btn" title="Eliminate answers">ABC</button>
       </div>
     </div>
+    ${moduleTagHtml(mod)}
+    ${directionsToggleHtml(mod)}
     <div class="qtext" data-hl="q">${q.text}</div>
     <div id="choices">
       ${q.choices.map((c, k) => {
@@ -608,12 +714,10 @@ function renderQuestion() {
 
   if (hasImage) {
     mountSplit(
-      `<figure class="pane-inner stimulus">
-        <img src="${q.image.src}" alt="${q.image.alt || ""}">
-        ${q.image.caption ? `<figcaption data-hl="cap">${q.image.caption}</figcaption>` : ""}
-      </figure>`,
+      `<div class="pane-inner stimulus">${imgFrameHtml(q.image)}</div>`,
       `<div class="pane-inner">${questionHtml}</div>`
     );
+    wireImgFrame();
   } else {
     $("stage").className = "stage single";
     $("stage").innerHTML = `<div class="pane"><div class="pane-inner">${questionHtml}</div></div>`;
@@ -655,6 +759,16 @@ function renderQuestion() {
   $("next-btn").style.display = "";
   $("back-btn").disabled = i === 0;
   $("next-btn").textContent = i === QUESTIONS.length - 1 ? "Finish" : "Next";
+
+  syncCalculatorUi();
+  const dBtn = $("directions-toggle-btn");
+  if (dBtn) {
+    dBtn.onclick = () => {
+      directionsOpenInline = !directionsOpenInline;
+      $("directions-inline").hidden = !directionsOpenInline;
+      dBtn.classList.toggle("open", directionsOpenInline);
+    };
+  }
 }
 
 function go(n) {
@@ -672,12 +786,36 @@ $("next-btn").onclick = () => {
 };
 
 const FLAG_SVG = `<svg class="navflag" width="16" height="17" viewBox="0 0 24 24"><path d="M6 3h12v18l-6-4-6 4z"/></svg>`;
+
+// Lưới số câu, có tiêu đề cho từng module (chỉ hiện khi đề có tên module)
+function moduleGridHtml(classOf) {
+  let html = "";
+  let last = -1;
+  state.QUESTIONS.forEach((q, k) => {
+    if (q.mod !== last) {
+      last = q.mod;
+      const m = state.modules[q.mod];
+      if (m && m.title) html += `<div class="nav-mod-title">${escapeHtml(m.title)} · ${CALC_LABEL[m.calculator] || ""}</div>`;
+    }
+    html += `<button class="${classOf(k)}" data-k="${k}">${k + 1}${state.marked[k] ? FLAG_SVG : ""}</button>`;
+  });
+  return html;
+}
+
+let navActiveTab = "current";
+
 function renderNav() {
   const unanswered = state.answers.filter((a) => a === null).length;
 
-  $("nav-grid").innerHTML = state.QUESTIONS.map((_, k) => `
-    <button class="${state.answers[k] !== null ? "done" : ""} ${k === state.idx ? "current" : ""} ${state.marked[k] ? "flag" : ""}" data-k="${k}">${k + 1}${state.marked[k] ? FLAG_SVG : ""}</button>`).join("");
+  $("nav-grid").innerHTML = moduleGridHtml((k) =>
+    `${state.answers[k] !== null ? "done" : ""} ${k === state.idx ? "current" : ""} ${state.marked[k] ? "flag" : ""}`);
   $("nav-grid").querySelectorAll("button").forEach((b) => (b.onclick = () => go(Number(b.dataset.k))));
+
+  const curBtn = $("nav-grid").querySelector("button.current");
+  if (curBtn && !curBtn.querySelector(".nav-pin")) {
+    curBtn.style.position = "relative";
+    curBtn.insertAdjacentHTML("afterbegin", `<span class="nav-pin"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="9" r="2.5"/><path d="M12 21s7-6.5 7-12a7 7 0 1 0-14 0c0 5.5 7 12 7 12z" fill="none" stroke="currentColor" stroke-width="2"/></svg></span>`);
+  }
 
   const statusEl = $("nav-status");
   if (unanswered > 0) {
@@ -688,6 +826,26 @@ function renderNav() {
     statusEl.classList.remove("warn");
   }
 }
+
+document.querySelectorAll(".popup-tab").forEach((btn) => {
+  btn.onclick = () => {
+    document.querySelectorAll(".popup-tab").forEach((b) => b.classList.remove("active"));
+    btn.classList.add("active");
+    navActiveTab = btn.dataset.tab;
+    let targetK = null;
+    if (navActiveTab === "current") targetK = state.idx;
+    else if (navActiveTab === "unanswered") targetK = state.answers.findIndex((a) => a === null);
+    else if (navActiveTab === "review") targetK = state.marked.findIndex((m) => m);
+    if (targetK != null && targetK >= 0) {
+      const el = $("nav-grid").querySelector(`button[data-k="${targetK}"]`);
+      if (el) {
+        el.scrollIntoView({ block: "center", behavior: "smooth" });
+        el.classList.add("current-pulse");
+        setTimeout(() => el.classList.remove("current-pulse"), 1200);
+      }
+    }
+  };
+});
 $("nav-btn").onclick = () => { renderNav(); $("nav-popup").hidden = !$("nav-popup").hidden; };
 $("nav-close").onclick = () => ($("nav-popup").hidden = true);
 $("review-btn").onclick = () => {
@@ -707,17 +865,30 @@ function renderBigReview() {
   $("stage").className = "stage single";
   $("stage").innerHTML = `
     <div class="pane"><div class="pane-inner" style="max-width:56rem">
-      <h2 class="bigreview-title">Review overall</h2>
-      <p id="bigreview-status" class="nav-status"></p>
-      <div id="bigreview-grid" class="nav-grid big"></div>
+      <h2 class="bigreview-title">Check Your Work</h2>
+      <p class="bigreview-sub">On test day, you won't be able to move on to the next module until time expires.</p>
+      <p class="bigreview-sub"><b>For these practice questions, you can click Next when you're ready to move on.</b></p>
+
+      <div class="bigreview-card">
+        <div class="bigreview-card-head">
+          <h3>${state.modules[state.QUESTIONS[0]?.mod]?.title || "Section"} Questions</h3>
+          <div class="bigreview-legend">
+            <span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="3" width="18" height="18" rx="2" stroke-dasharray="3 2"/></svg> Unanswered</span>
+            <span><svg width="11" height="13" viewBox="0 0 24 24"><path d="M6 3h12v18l-6-4-6 4z"/></svg> For Review</span>
+          </div>
+        </div>
+        <p id="bigreview-status" class="nav-status"></p>
+        <div id="bigreview-grid" class="nav-grid big"></div>
+      </div>
+
       <div class="bigreview-actions">
-        <button id="bigreview-back" class="btn secondary wide">Return back to questions</button>
-        <button id="bigreview-submit" class="btn wide" disabled>Submit</button>
+        <button id="bigreview-back" class="btn secondary wide">Back</button>
+        <button id="bigreview-submit" class="btn wide" disabled>Next</button>
       </div>
     </div></div>`;
 
-  $("bigreview-grid").innerHTML = state.QUESTIONS.map((_, k) => `
-    <button class="${state.answers[k] !== null ? "done" : ""} ${state.marked[k] ? "flag" : ""}" data-k="${k}">${k + 1}${state.marked[k] ? FLAG_SVG : ""}</button>`).join("");
+  $("bigreview-grid").innerHTML = moduleGridHtml((k) =>
+    `${state.answers[k] !== null ? "done" : ""} ${state.marked[k] ? "flag" : ""}`);
   $("bigreview-grid").querySelectorAll("button").forEach((b) => (b.onclick = () => go(Number(b.dataset.k))));
 
   const statusEl = $("bigreview-status");
@@ -726,16 +897,20 @@ function renderBigReview() {
     statusEl.textContent = `There are ${unanswered} questions left — finish them to submit!`;
     statusEl.classList.add("warn");
     submitBtn.disabled = true;
+    submitBtn.textContent = "Next";
   } else {
     statusEl.textContent = "You have finished all of the questions, ready to submit!";
     statusEl.classList.remove("warn");
     submitBtn.disabled = false;
+    submitBtn.textContent = "Submit";
   }
   submitBtn.onclick = () => {
     if (state.answers.some((a) => a === null)) return;
     finish();
   };
   $("bigreview-back").onclick = () => go(state.idx);
+
+  syncCalculatorUi();
 }
 
 function fmt(s) {
@@ -806,7 +981,6 @@ async function finish() {
   state.finalScore = result.score;
   state.finalTotal = result.total;
 
-  // Đáp án đúng từng câu chỉ được lấy về SAU KHI đã nộp bài (không lộ trước lúc làm bài)
   const { data: reviewRows, error: reviewErr } = await sb.rpc("get_attempt_review", {
     p_attempt_id: state.attemptId
   });
@@ -838,11 +1012,13 @@ function computeStats() {
   const total = state.QUESTIONS.length;
   let correct = 0;
   const byUnit = {};
+  const byModule = state.modules.map((m) => ({ title: m.title, calculator: m.calculator, correct: 0, total: 0 }));
   state.QUESTIONS.forEach((q, i) => {
     const unit = q.unit || "";
     if (!byUnit[unit]) byUnit[unit] = { unit, correct: 0, wrong: 0 };
     const isCorrect = state.correctIndex[i] != null && state.answers[i] === state.correctIndex[i];
-    if (isCorrect) { byUnit[unit].correct++; correct++; }
+    byModule[q.mod].total++;
+    if (isCorrect) { byUnit[unit].correct++; byModule[q.mod].correct++; correct++; }
     else byUnit[unit].wrong++;
   });
   const units = Object.values(byUnit);
@@ -858,6 +1034,7 @@ function computeStats() {
     percent: total ? Math.round((correctCount / total) * 100) : 0,
     topCorrect,
     topWrong,
+    byModule,
     secondsUsed,
     minutesUsed
   };
@@ -905,6 +1082,42 @@ function estimateHeroHtml(est) {
     ${pending ? `<p class="est-note">Your FRQ has not been graded yet. Your estimated AP score will appear once your teacher enters it.</p>` : ""}`;
 }
 
+// Bảng kết quả theo từng module (có điểm của từng module nếu giáo viên đã cấu hình cách tính điểm)
+function moduleBreakdownHtml(s, est) {
+  let rows = [];
+  if (est && est.scoring_configured && Array.isArray(est.modules) && est.modules.length) {
+    rows = est.modules.map((m) => {
+      const isFrq = m.kind === "frq";
+      const frqPending = isFrq && Number(m.n_frq_graded) < Number(m.n_frq);
+      return {
+        title: m.title,
+        type: isFrq ? "FRQ" : (CALC_LABEL[m.calculator] || ""),
+        result: isFrq
+          ? (frqPending ? "Not graded yet" : `${fmtNum(m.frq_raw)} / ${fmtNum(m.frq_max)} raw`)
+          : `${fmtNum(m.correct)} / ${fmtNum(m.total)} correct`,
+        pts: frqPending ? "—" : `${fmtNum(m.points)} / ${fmtNum(m.max_points)}`
+      };
+    });
+  } else if (state.modules.length > 1 || (state.modules[0] && state.modules[0].title)) {
+    rows = s.byModule.map((m) => ({
+      title: m.title,
+      type: CALC_LABEL[m.calculator] || "",
+      result: `${m.correct} / ${m.total} correct`,
+      pts: "—"
+    }));
+  }
+  if (!rows.length) return "";
+  return `
+    <div class="mod-breakdown">
+      <table>
+        <thead><tr><th>Module</th><th>Calculator</th><th>Result</th><th>Points</th></tr></thead>
+        <tbody>
+          ${rows.map((r) => `<tr><td>${escapeHtml(r.title)}</td><td>${escapeHtml(r.type)}</td><td>${escapeHtml(r.result)}</td><td>${escapeHtml(r.pts)}</td></tr>`).join("")}
+        </tbody>
+      </table>
+    </div>`;
+}
+
 async function renderStats() {
   const s = computeStats();
   const estimate = await fetchScoreEstimate();
@@ -939,6 +1152,8 @@ async function renderStats() {
           </div>
         </div>
       </div>
+
+      ${moduleBreakdownHtml(s, estimate)}
 
       <div class="stats-list">
         ${state.QUESTIONS.map((q, i) => {
@@ -977,6 +1192,7 @@ function renderReview(i) {
         <button class="mark" id="review-back-btn">← Quay lại tổng kết</button>
       </div>
     </div>
+    ${moduleTagHtml(state.modules[q.mod])}
     <div class="qtext">${q.text}</div>
     <div id="choices">
       ${q.choices.map((c, k) => {
@@ -1009,28 +1225,7 @@ function renderReview(i) {
   $("review-back-btn").onclick = () => renderStats();
 }
 
-/* ============ MÁY TÍNH DESMOS ============ */
-let desmosCalc = null;
-function ensureDesmosCalculator() {
-  if (desmosCalc) return;
-  const elt = $("calc-desmos");
-  if (elt && window.Desmos) {
-    desmosCalc = Desmos.FourFunctionCalculator(elt);
-  }
-}
-$("calc-btn").onclick = () => {
-  $("calc").hidden = !$("calc").hidden;
-  if (!$("calc").hidden) ensureDesmosCalculator();
-};
-$("calc-close").onclick = () => ($("calc").hidden = true);
-
-if (window.ResizeObserver) {
-  const calcResizeObserver = new ResizeObserver(() => {
-    if (desmosCalc) desmosCalc.resize();
-  });
-  calcResizeObserver.observe($("calc"));
-}
-
+/* ============ KÉO / ĐỔI KÍCH THƯỚC KHUNG MÁY TÍNH ============ */
 (function () {
   const box = $("calc"), head = $("calc-head");
   let dx = 0, dy = 0, drag = false, minTop = 90;
@@ -1060,7 +1255,6 @@ if (window.ResizeObserver) {
 
   handle.addEventListener("mousedown", (e) => {
     e.preventDefault();
-
     resizing = true;
     const r = box.getBoundingClientRect();
     startX = e.clientX; startY = e.clientY;
@@ -1088,8 +1282,6 @@ const MAX_FS_EXITS = 3;
 let fsExitCount = 0;
 let fsOverlayShowing = false;
 
-// webkitRequestFullscreen / msRequestFullscreen (Safari, iPad) không trả về Promise,
-// nên phải kiểm tra trước khi gọi .catch để tránh TypeError.
 function requestFullscreenMode() {
   const el = document.documentElement;
   const req = el.requestFullscreen || el.webkitRequestFullscreen || el.msRequestFullscreen;
@@ -1135,3 +1327,72 @@ $("fs-resume-btn").onclick = () => {
   requestFullscreenMode();
 };
 $("fs-restart-btn").onclick = () => location.reload();
+/* ============ DIRECTIONS THEO MODULE ============ */
+const seenDirections = new Set();
+let directionsOpenInline = false;
+
+function paragraphsHtml(text) {
+  return (text || "").split(/\n{2,}/).map((p) => `<p>${escapeHtml(p).replace(/\n/g, "<br>")}</p>`).join("");
+}
+
+function showDirectionsScreen(mod, isFirstEver) {
+  $("directions-title").textContent = `${mod.title || "Section"} Directions`;
+  $("directions-body").innerHTML = paragraphsHtml(mod.directions_html);
+  $("directions-resume-btn").textContent = isFirstEver ? "Begin Section" : "Resume Testing";
+  $("directions-screen").hidden = false;
+}
+
+$("directions-resume-btn").onclick = () => {
+  $("directions-screen").hidden = true;
+  renderQuestion();
+};
+
+function directionsToggleHtml(mod) {
+  if (!mod || !mod.directions_html) return "";
+  return `
+    <button class="directions-toggle" id="directions-toggle-btn">
+      Directions
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg>
+    </button>
+    <div class="directions-inline" id="directions-inline" hidden>${paragraphsHtml(mod.directions_html)}</div>`;
+}
+let imgZoom = { pct: 100 };
+
+function imgFrameHtml(img) {
+  return `
+    <div class="img-frame" id="img-frame">
+      <div class="img-frame-bar">
+        <button id="if-zoom-in" title="Zoom in">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3M11 8v6M8 11h6"/></svg>
+        </button>
+        <button id="if-zoom-out" title="Zoom out">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3M8 11h6"/></svg>
+        </button>
+        <span class="if-pct">${imgZoom.pct}%</span>
+        <span class="if-reset" id="if-reset">Reset</span>
+        <span class="if-sep"></span>
+        <button class="if-expand" id="if-expand" title="Full screen">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M21 16v3a2 2 0 0 1-2 2h-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+        </button>
+      </div>
+      <div class="img-frame-viewport" id="img-frame-viewport">
+        <img src="${img.src}" alt="${img.alt || ""}" id="img-frame-img" style="width:${imgZoom.pct}%">
+      </div>
+      ${img.caption ? `<figcaption data-hl="cap" style="padding:0 16px 14px">${img.caption}</figcaption>` : ""}
+    </div>`;
+}
+
+function wireImgFrame() {
+  const frame = $("img-frame");
+  if (!frame) return;
+  const img = $("img-frame-img");
+  const pctEl = frame.querySelector(".if-pct");
+  const apply = () => {
+    img.style.width = imgZoom.pct + "%";
+    pctEl.textContent = imgZoom.pct + "%";
+  };
+  $("if-zoom-in").onclick = () => { imgZoom.pct = Math.min(300, imgZoom.pct + 25); apply(); };
+  $("if-zoom-out").onclick = () => { imgZoom.pct = Math.max(25, imgZoom.pct - 25); apply(); };
+  $("if-reset").onclick = () => { imgZoom.pct = 100; apply(); };
+  $("if-expand").onclick = () => frame.classList.toggle("expanded");
+}

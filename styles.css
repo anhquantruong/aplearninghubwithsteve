@@ -408,3 +408,125 @@ mark.hl.hl-flash { outline: 2px solid var(--blue); }
   .est-hero { flex-direction: column; text-align: center; }
   .est-details { width: 100%; }
 }
+
+/* Bổ sung cho styles.css — giữ nguyên styles.css cũ, chỉ thêm file này (đã được link trong index.html) */
+
+.main { display: flex; flex-direction: column; gap: 16px; }
+
+.step-card > summary.step-title {
+  cursor: pointer; font-size: 15px; font-weight: 700; color: var(--blue); list-style: none;
+}
+.step-card > summary.step-title::-webkit-details-marker { display: none; }
+.step-card[open] > summary.step-title { margin-bottom: 8px; }
+
+.notice {
+  background: #fff7e6; border: 1px solid #f0c36d; color: #7a5200;
+  border-radius: 8px; padding: 8px 12px; font-size: 13px; margin: 8px 0 0;
+}
+.notice[hidden] { display: none; }
+
+.modules-editor { display: flex; flex-direction: column; gap: 12px; margin: 10px 0 12px; }
+
+.mod-card {
+  border: 1px solid var(--line); border-left: 4px solid var(--blue);
+  border-radius: 8px; padding: 12px 14px; background: #fafbff;
+}
+.mod-head { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.mod-badge {
+  flex-shrink: 0; font-size: 11px; font-weight: 700; text-transform: uppercase;
+  background: var(--blue); color: #fff; border-radius: 999px; padding: 3px 9px;
+}
+.mod-head .mod-title { flex: 1; font-weight: 600; }
+.mod-card .field-row { margin-top: 8px; align-items: flex-end; }
+.mod-summary { margin-top: 8px; font-size: 12px; color: #555; }
+
+.frq-items { margin-top: 10px; display: flex; flex-direction: column; gap: 6px; }
+.frq-items .frq-row { align-items: center; margin-top: 0; }
+.frq-items .cf-label { width: 60px; font-weight: 700; font-size: 13px; flex-shrink: 0; }
+.frq-items .frq-row input { max-width: 150px; }
+.frq-items > .btn { align-self: flex-start; }
+
+/* Tiêu đề module trong danh sách câu hỏi (cột trái) */
+.q-list li.mod-head-li {
+  background: #eef1fc; color: var(--blue); font-weight: 700; font-size: 12px;
+  text-transform: uppercase; cursor: default; justify-content: space-between;
+  position: sticky; top: 0; z-index: 1;
+}
+.q-list li.mod-head-li:hover { background: #eef1fc; }
+
+/* Tiêu đề module trong cửa sổ chi tiết học sinh */
+.detail-mod {
+  margin: 14px 0 4px; padding: 4px 8px; font-size: 12px; font-weight: 700;
+  text-transform: uppercase; color: var(--blue); background: #eef1fc; border-radius: 6px;
+}
+.frq-entry .detail-mod { margin-top: 8px; }
+/* ===== Màn hình Directions toàn trang (trước khi vào module) ===== */
+.directions-screen {
+  position: fixed; inset: 0; background: #fff; z-index: 150;
+  overflow-y: auto; display: flex; justify-content: center;
+}
+.directions-box { max-width: 52rem; width: 100%; padding: 60px 40px 120px; }
+.directions-box h1 { font-size: 30px; font-weight: 800; text-align: center; margin-bottom: 30px; }
+.directions-body { font-size: 17px; line-height: 1.7; color: #222; }
+.directions-body p { margin-bottom: 18px; }
+.directions-body .center { text-align: center; }
+.directions-resume-bar {
+  position: fixed; left: 0; right: 0; bottom: 0; background: #fff;
+  border-top: 1px solid var(--line); padding: 14px 32px; display: flex; justify-content: flex-end; z-index: 151;
+}
+#directions-resume-btn.wide { max-width: 220px; background: #fbbf24; color: #1a1a1a; font-weight: 800; }
+#directions-resume-btn.wide:hover { background: #f5a917; }
+
+/* ===== Dropdown "Directions" thu nhỏ khi đang làm bài ===== */
+.directions-toggle { display: flex; align-items: center; gap: 4px; font-size: 14px; font-weight: 600; padding: 4px 6px; }
+.directions-toggle svg { transition: transform .15s; }
+.directions-toggle.open svg { transform: rotate(180deg); }
+.directions-inline {
+  background: #fff; border: 1px solid var(--line); border-radius: 10px;
+  padding: 20px 28px; margin: 0 auto 20px; max-width: 48rem;
+  font-size: 15px; line-height: 1.6;
+}
+.directions-inline[hidden] { display: none; }
+/* ===== Khung ảnh kiểu Bluebook: có thanh công cụ zoom ===== */
+.img-frame {
+  border: 1px solid var(--line); border-radius: 10px; overflow: hidden;
+  background: #fff; margin-bottom: 14px;
+}
+.img-frame-bar {
+  display: flex; align-items: center; gap: 14px;
+  padding: 8px 12px; background: var(--soft); border-bottom: 1px solid var(--line);
+  font-size: 13px; color: #444; user-select: none;
+}
+.img-frame-bar button {
+  display: flex; align-items: center; justify-content: center;
+  padding: 2px; border-radius: 4px;
+}
+.img-frame-bar button:hover { background: rgba(0,0,0,.06); }
+.img-frame-bar .if-pct { font-weight: 600; min-width: 42px; text-align: center; }
+.img-frame-bar .if-reset { font-weight: 600; cursor: pointer; }
+.img-frame-bar .if-sep { width: 1px; height: 16px; background: var(--line); }
+.img-frame-bar .if-expand { margin-left: auto; }
+.img-frame-viewport { overflow: auto; max-height: 55vh; display: flex; justify-content: center; padding: 16px; }
+.img-frame-viewport img {
+  display: block; max-width: 100%; height: auto; transition: width .12s;
+}
+.img-frame.expanded {
+  position: fixed; inset: 20px; z-index: 180; max-height: none;
+  box-shadow: 0 10px 50px rgba(0,0,0,.4);
+}
+.img-frame.expanded .img-frame-viewport { max-height: calc(100vh - 110px); }
+.popup-tabs { display: flex; gap: 6px; margin-bottom: 10px; border-bottom: 1px solid var(--line); padding-bottom: 10px; }
+.popup-tab {
+  flex: 1; display: flex; align-items: center; justify-content: center; gap: 5px;
+  font-size: 12px; font-weight: 600; color: #888; padding: 6px 4px; border-radius: 6px;
+}
+.popup-tab.active { color: var(--blue); background: #eef1fc; }
+.nav-grid button.current-pulse { outline: 2px solid var(--blue); outline-offset: 2px; }
+.nav-grid-wrap { position: relative; }
+.nav-pin { position: absolute; top: -18px; left: 50%; transform: translateX(-50%); color: var(--blue); pointer-events: none; }
+.bigreview-sub { text-align: center; color: #333; font-size: 15px; max-width: 42rem; margin: 0 auto 10px; }
+.bigreview-card { border: 1px solid var(--line); border-radius: 12px; padding: 22px 26px; margin: 24px 0 30px; }
+.bigreview-card-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+.bigreview-card-head h3 { font-size: 18px; font-weight: 700; }
+.bigreview-legend { display: flex; gap: 18px; font-size: 13px; color: #555; }
+.bigreview-legend span { display: flex; align-items: center; gap: 5px; }
