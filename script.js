@@ -669,7 +669,6 @@ if (window.ResizeObserver) {
   calcResizeObserver.observe($("calc"));
 }
 
-/* ============ 5. RENDER CÂU HỎI ============ */
 function renderQuestion() {
   state.view = "question";
   hideHlPopover();
@@ -678,12 +677,8 @@ function renderQuestion() {
   const i = state.idx;
   const hasImage = Boolean(q.image);
   const mod = state.modules[q.mod];
-    // Vào module mới lần đầu & module có directions -> chặn hiện câu hỏi, show màn Directions trước
-  if (mod && mod.directions_html && !seenDirections.has(q.mod)) {
-    seenDirections.add(q.mod);
-    showDirectionsScreen(mod, state.idx === 0);
-    return;
-  }
+  const autoShowDirections = mod && mod.directions_html && !seenDirections.has(q.mod);
+  if (autoShowDirections) seenDirections.add(q.mod);
 
   const questionHtml = `
     <div class="qhead">
@@ -697,7 +692,6 @@ function renderQuestion() {
       </div>
     </div>
     ${moduleTagHtml(mod)}
-    ${directionsToggleHtml(mod)}
     <div class="qtext" data-hl="q">${q.text}</div>
     <div id="choices">
       ${q.choices.map((c, k) => {
@@ -766,14 +760,21 @@ function renderQuestion() {
   $("next-btn").textContent = i === QUESTIONS.length - 1 ? "Finish" : "Next";
 
   syncCalculatorUi();
-  const dBtn = $("directions-toggle-btn");
-  if (dBtn) {
-    dBtn.onclick = () => {
-      directionsOpenInline = !directionsOpenInline;
-      $("directions-inline").hidden = !directionsOpenInline;
-      dBtn.classList.toggle("open", directionsOpenInline);
-    };
+
+  const dToggle = $("directions-toggle-btn");
+  if (dToggle) {
+    if (mod && mod.directions_html) {
+      dToggle.hidden = false;
+      dToggle.onclick = () => {
+        if ($("directions-overlay").hidden) showDirectionsScreen(mod);
+        else hideDirectionsScreen();
+      };
+    } else {
+      dToggle.hidden = true;
+    }
   }
+
+  if (autoShowDirections) showDirectionsScreen(mod);
 }
 
 function go(n) {
@@ -1332,37 +1333,31 @@ $("fs-resume-btn").onclick = () => {
   requestFullscreenMode();
 };
 $("fs-restart-btn").onclick = () => location.reload();
-/* ============ DIRECTIONS THEO MODULE ============ */
+/* ============ DIRECTIONS THEO MODULE (dropdown kiểu Bluebook) ============ */
 const seenDirections = new Set();
-let directionsOpenInline = false;
 
 function paragraphsHtml(text) {
-  // Admin đã tự gõ HTML (vd: <b>, <br>) trong ô Directions ở trang quản trị,
-  // nên hiển thị nguyên văn, không escape — khác với nội dung câu hỏi lấy từ học sinh.
+  // Admin tự gõ HTML (<b>, <br>...) trong ô Directions ở trang quản trị -> hiển thị nguyên văn
   return text || "";
 }
 
-function showDirectionsScreen(mod, isFirstEver) {
-  $("directions-title").textContent = `${mod.title || "Section"} Directions`;
-  $("directions-body").innerHTML = paragraphsHtml(mod.directions_html);
-  $("directions-resume-btn").textContent = isFirstEver ? "Begin Section" : "Resume Testing";
-  $("directions-screen").hidden = false;
+function showDirectionsScreen(mod) {
+  $("directions-dropdown-body").innerHTML = paragraphsHtml(mod.directions_html);
+  $("directions-overlay").hidden = false;
+  const btn = $("directions-toggle-btn");
+  if (btn) btn.classList.add("open");
 }
 
-$("directions-resume-btn").onclick = () => {
-  $("directions-screen").hidden = true;
-  renderQuestion();
-};
-
-function directionsToggleHtml(mod) {
-  if (!mod || !mod.directions_html) return "";
-  return `
-    <button class="directions-toggle" id="directions-toggle-btn">
-      Directions
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg>
-    </button>
-    <div class="directions-inline" id="directions-inline" hidden>${paragraphsHtml(mod.directions_html)}</div>`;
+function hideDirectionsScreen() {
+  $("directions-overlay").hidden = true;
+  const btn = $("directions-toggle-btn");
+  if (btn) btn.classList.remove("open");
 }
+
+$("directions-close-btn").onclick = hideDirectionsScreen;
+$("directions-overlay").addEventListener("click", (e) => {
+  if (e.target.id === "directions-overlay") hideDirectionsScreen();
+});
 let imgZoom = { pct: 100 };
 
 function imgFrameHtml(img) {

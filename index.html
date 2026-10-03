@@ -33,11 +33,12 @@
     <p>This test can only be taken on an iPad or a laptop/desktop computer. Please switch devices to continue.</p>
   </div>
 </div>
-<div id="directions-screen" class="directions-screen" hidden>
-  <div class="directions-box">
-    <h1 id="directions-title">Section Directions</h1>
-    <div id="directions-body" class="directions-body"></div>
-    <button id="directions-resume-btn" class="btn wide">Resume Testing</button>
+<div id="directions-overlay" class="directions-overlay" hidden>
+  <div class="directions-dropdown">
+    <div id="directions-dropdown-body" class="directions-dropdown-body"></div>
+    <div class="directions-dropdown-foot">
+      <button id="directions-close-btn" class="btn">Close</button>
+    </div>
   </div>
 </div>
 <div id="app-root" class="app" hidden>
@@ -45,6 +46,10 @@
 <div class="title">
 <h1>Section I: Multiple Choice</h1>
 <span class="subtitle" id="exam-subtitle">Advanced Placement</span>
+<button id="directions-toggle-btn" class="directions-toggle" hidden>
+  Directions
+  <svg class="dir-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg>
+</button>
 </div>
 <div class="timer-box">
 <div id="timer" class="timer">--:--</div>

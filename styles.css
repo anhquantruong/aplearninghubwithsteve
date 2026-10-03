@@ -461,32 +461,51 @@ mark.hl.hl-flash { outline: 2px solid var(--blue); }
 }
 .frq-entry .detail-mod { margin-top: 8px; }
 /* ===== Màn hình Directions toàn trang (trước khi vào module) ===== */
-.directions-screen {
-  position: fixed; inset: 0; background: #fff; z-index: 150;
-  overflow-y: auto; display: flex; justify-content: center;
+/* ===== Nút "Directions ⌄" trong topbar ===== */
+.title { display: flex; flex-direction: column; gap: 4px; }
+.directions-toggle {
+  display: flex; align-items: center; gap: 5px;
+  font-size: 13px; font-weight: 600; color: var(--blue);
+  padding: 0; align-self: flex-start;
 }
-.directions-box { max-width: 52rem; width: 100%; padding: 60px 40px 120px; }
-.directions-box h1 { font-size: 30px; font-weight: 800; text-align: center; margin-bottom: 30px; }
-.directions-body { font-size: 17px; line-height: 1.7; color: #222; }
-.directions-body p { margin-bottom: 18px; }
-.directions-body .center { text-align: center; }
-.directions-resume-bar {
-  position: fixed; left: 0; right: 0; bottom: 0; background: #fff;
-  border-top: 1px solid var(--line); padding: 14px 32px; display: flex; justify-content: flex-end; z-index: 151;
-}
-#directions-resume-btn.wide { max-width: 220px; background: #fbbf24; color: #1a1a1a; font-weight: 800; }
-#directions-resume-btn.wide:hover { background: #f5a917; }
+.directions-toggle .dir-chevron { transition: transform .15s; }
+.directions-toggle.open .dir-chevron { transform: rotate(180deg); }
 
-/* ===== Dropdown "Directions" thu nhỏ khi đang làm bài ===== */
-.directions-toggle { display: flex; align-items: center; gap: 4px; font-size: 14px; font-weight: 600; padding: 4px 6px; }
-.directions-toggle svg { transition: transform .15s; }
-.directions-toggle.open svg { transform: rotate(180deg); }
-.directions-inline {
-  background: #fff; border: 1px solid var(--line); border-radius: 10px;
-  padding: 20px 28px; margin: 0 auto 20px; max-width: 48rem;
-  font-size: 15px; line-height: 1.6;
+/* ===== Dropdown Directions: che một phần, nền sau dimmed, có nút Close ===== */
+.directions-overlay {
+  position: fixed; top: 80px; left: 0; right: 0; bottom: 0;
+  background: rgba(10, 20, 60, .45); z-index: 140;
+  display: flex; justify-content: flex-start;
 }
-.directions-inline[hidden] { display: none; }
+.directions-overlay[hidden] { display: none; }
+.directions-dropdown {
+  position: relative;
+  background: #fff;
+  width: min(1500px, 92vw);
+  max-height: calc(100vh - 80px - 60px);
+  overflow-y: auto;
+  box-shadow: 0 20px 60px rgba(0,0,0,.35);
+  padding: 44px 56px 36px;
+}
+.directions-dropdown::before {
+  content: ""; position: absolute; top: -13px; left: 56px;
+  width: 0; height: 0;
+  border-left: 13px solid transparent; border-right: 13px solid transparent;
+  border-bottom: 13px solid #fff;
+}
+.directions-dropdown-body { font-size: 17px; line-height: 1.7; color: #222; }
+.directions-dropdown-body p { margin-bottom: 18px; }
+.directions-dropdown-foot { display: flex; justify-content: flex-end; margin-top: 10px; }
+.directions-dropdown-foot .btn {
+  background: #fbbf24; color: #1a1a1a; font-weight: 800;
+  padding: 11px 30px; border-radius: 8px;
+}
+.directions-dropdown-foot .btn:hover { background: #f5a917; }
+
+@media (max-width: 800px) {
+  .directions-overlay { top: auto; }
+  .directions-dropdown { width: 100%; max-height: 80vh; }
+}
 /* ===== Khung ảnh kiểu Bluebook: có thanh công cụ zoom ===== */
 .img-frame {
   border: 1px solid var(--line); border-radius: 10px; overflow: hidden;
