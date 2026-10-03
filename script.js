@@ -1337,7 +1337,9 @@ const seenDirections = new Set();
 let directionsOpenInline = false;
 
 function paragraphsHtml(text) {
-  return (text || "").split(/\n{2,}/).map((p) => `<p>${escapeHtml(p).replace(/\n/g, "<br>")}</p>`).join("");
+  // Admin đã tự gõ HTML (vd: <b>, <br>) trong ô Directions ở trang quản trị,
+  // nên hiển thị nguyên văn, không escape — khác với nội dung câu hỏi lấy từ học sinh.
+  return text || "";
 }
 
 function showDirectionsScreen(mod, isFirstEver) {
